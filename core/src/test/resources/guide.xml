@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tv SYSTEM "xmltv.dtd">
+<tv generator-info-name="test">
+  <channel id="n1.de"><display-name>Nordlicht 1</display-name><icon src="http://img/n1.png"/></channel>
+  <channel id="as.de"><display-name lang="de">Arena Sports</display-name><display-name>AS</display-name></channel>
+  <programme start="20261015193000 +0200" stop="20261015201500 +0200" channel="n1.de">
+    <title lang="de">Wetter</title><desc>Das Wetter.</desc><category>News</category>
+  </programme>
+  <programme start="20261015201500 +0200" stop="20261015211500 +0200" channel="n1.de">
+    <title>World Report</title><credits><presenter>A</presenter></credits>
+  </programme>
+  <programme start="20261015180000 +0200" stop="20261015190000 +0200" channel="as.de"><title>Old Match</title></programme>
+  <programme start="20261015190000Z" stop="20261015200000Z" channel="as.de"><title>Tennis</title></programme>
+  <programme start="20261015190000 +0000" stop="20261015200000 +0000" channel="other"><title>Ignored</title></programme>
+</tv>

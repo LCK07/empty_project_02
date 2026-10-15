@@ -1,0 +1,837 @@
+<title>Lumen TV Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a fixed 1920 x 1080 tvOS canvas (1 CSS px = 1 tvOS point = 0.5 dp on Android TV),
+   scaled to fit the window, with an on-screen remote under it. Dark only, as tvOS media apps. */
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --fg-2: rgba(235, 235, 245, 0.68);
+  --fg-3: rgba(235, 235, 245, 0.42);
+  --glass: rgba(60, 60, 67, 0.42);
+  --glass-strong: rgba(28, 28, 30, 0.72);
+  --fill: rgba(255, 255, 255, 0.14);
+  --fill-2: rgba(255, 255, 255, 0.22);
+  --live: #ff4245;
+  --accent: #0091ff;
+  --sep: rgba(84, 84, 88, 0.6);
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  /* tvOS text styles, in points */
+  --t-title1: 76px; --t-title2: 57px; --t-title3: 48px; --t-headline: 38px;
+  --t-callout: 31px; --t-body: 29px; --t-cap1: 25px; --t-cap2: 23px;
+  --safe-x: 80px; --safe-y: 60px;
+  --spring: cubic-bezier(0.2, 0.9, 0.3, 1.08);
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; }
+.app { height: 100%; display: flex; flex-direction: column; gap: 12px; padding-block: 12px; box-sizing: border-box; }
+#viewport { position: relative; flex: 1; min-height: 0; }
+#stage { position: absolute; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: #000;
+  border-radius: 18px; box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 30px 80px rgba(0,0,0,.6);
+  font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
+
+/* ---------- Remote ---------- */
+.remote { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; color: var(--fg-2); font-size: 13px; }
+.remote .grp { display: flex; gap: 6px; align-items: center; }
+.remote button { font: 600 13px/1 var(--font); color: #fff; background: #1c1c1e; border: 0; border-radius: 999px; min-width: 40px; height: 36px; padding: 0 14px; cursor: pointer; }
+.remote button:active { transform: scale(.94); background: #2c2c2e; }
+.remote button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.remote .hint { font-size: 12px; color: var(--fg-3); }
+.remote .hint kbd { font: 600 11px var(--font); background: #1c1c1e; border-radius: 5px; padding: 2px 6px; color: var(--fg-2); }
+@media (max-width: 700px) { .remote .hint { display: none; } }
+
+/* ---------- Artwork (generated: the mockup ships no real posters) ---------- */
+.art { position: absolute; inset: 0; background-size: cover; }
+.grain::after { content: ""; position: absolute; inset: 0; opacity: .16; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+
+/* ---------- Tab bar: a glass capsule at the top, hidden while content scrolls ---------- */
+#tabbar { position: absolute; top: 44px; left: 0; right: 0; display: flex; justify-content: center; z-index: 20;
+  transition: transform .5s var(--ease), opacity .4s var(--ease); }
+#tabbar.away { transform: translateY(-140px); opacity: 0; }
+#tabbar .cap { display: flex; gap: 6px; padding: 8px; border-radius: 999px; background: var(--glass);
+  backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.08), 0 10px 40px rgba(0,0,0,.35); }
+.tab { font: 500 var(--t-cap1)/1 var(--font); color: var(--fg-2); padding: 16px 30px; border-radius: 999px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.tab.sel { color: #fff; background: var(--fill); font-weight: 600; }
+.tab svg { width: 28px; height: 28px; }
+.tab.f.focus { background: #fff; color: #000; transform: scale(1.08); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+
+/* ---------- Focus: the tvOS focus effect ---------- */
+.f { position: relative; transition: transform .35s var(--spring), box-shadow .35s var(--ease), background-color .2s, color .2s; outline: none; }
+.f.focus { z-index: 5; }
+.f.pressed { transform: scale(.96) !important; transition-duration: .08s; }
+.tile { border-radius: 22px; overflow: hidden; flex: none; background: #1c1c1e; transform: perspective(1200px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); }
+.tile.focus { transform: perspective(1200px) scale(1.1) translateY(-6px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  box-shadow: 0 34px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08); }
+.tile .sheen { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s, background-position .5s var(--ease);
+  background: radial-gradient(60% 50% at var(--sx,30%) 0%, rgba(255,255,255,.32), rgba(255,255,255,0) 70%); }
+.tile.focus .sheen { opacity: 1; }
+.btn { font: 600 var(--t-callout)/1 var(--font); color: #fff; background: var(--fill); border-radius: 18px; padding: 22px 38px;
+  display: inline-flex; align-items: center; gap: 14px; white-space: nowrap;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.btn svg { width: 30px; height: 30px; }
+.btn.icon { padding: 22px; }
+.btn.f.focus { background: #fff; color: #000; transform: scale(1.08); box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+
+/* ---------- Screen chrome ---------- */
+#screen { position: absolute; inset: 0; }
+.scroller { position: absolute; left: 0; right: 0; top: 0; transition: transform .6s var(--ease); will-change: transform; }
+.hero { position: relative; height: 1080px; overflow: hidden; }
+.hero .art { transform-origin: 70% 40%; animation: drift 30s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: scale(1.07) translateX(-20px); } }
+.hero .shade { position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,.78) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 70%),
+              linear-gradient(0deg, #000 0%, rgba(0,0,0,.6) 22%, rgba(0,0,0,0) 50%); }
+.hero .body { position: absolute; left: var(--safe-x); bottom: 300px; width: 1000px; display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { font: 600 var(--t-cap2)/1.2 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-2); }
+.wordmark { font: 800 112px/0.95 var(--font); letter-spacing: -0.035em; text-wrap: balance; }
+.meta { font: 500 var(--t-cap1)/1.3 var(--font); color: var(--fg-2); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.meta .pill { border: 2px solid var(--fg-3); border-radius: 6px; padding: 0 8px; font-size: 20px; line-height: 28px; }
+.desc { font: 400 var(--t-body)/1.38 var(--font); color: var(--fg-2); max-width: 900px; }
+.actions { display: flex; gap: 24px; margin-top: 14px; align-items: center; }
+.progress { height: 6px; border-radius: 3px; background: rgba(255,255,255,.25); overflow: hidden; }
+.progress i { display: block; height: 100%; background: #fff; border-radius: inherit; }
+.resume-line { display: flex; align-items: center; gap: 18px; font: 500 var(--t-cap1)/1 var(--font); color: var(--fg-2); }
+.resume-line .progress { width: 220px; }
+
+.rows { position: relative; display: flex; flex-direction: column; gap: 56px; padding-bottom: 140px; }
+.hero + .rows { margin-top: -230px; }
+.row h3 { margin: 0 0 22px var(--safe-x); font: 600 var(--t-headline)/1 var(--font); letter-spacing: -0.015em; }
+.row .clip { overflow: visible; }
+.track { display: flex; gap: 40px; padding: 18px var(--safe-x) 26px; transition: transform .55s var(--ease); will-change: transform; }
+
+.ep { width: 520px; height: 292px; }
+.ep-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 60px 24px 20px; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+.ep-cap b { display: block; font: 600 var(--t-cap1)/1.2 var(--font); }
+.ep-cap span { font: 500 var(--t-cap2)/1.3 var(--font); color: var(--fg-2); }
+.ep-cap .progress { margin-top: 12px; }
+.poster { width: 260px; height: 390px; }
+.poster .ttl { position: absolute; left: 20px; right: 20px; bottom: 22px; font: 800 34px/1 var(--font); letter-spacing: -0.03em; text-wrap: balance; text-shadow: 0 2px 16px rgba(0,0,0,.4); }
+.poster .badge { position: absolute; top: 14px; right: 14px; font: 700 18px/1 var(--font); background: var(--accent); padding: 7px 10px; border-radius: 8px; }
+.under { position: absolute; left: 0; top: calc(100% + 18px); width: 140%; font: 500 var(--t-cap2)/1.3 var(--font); color: var(--fg-2); opacity: 0; transition: opacity .3s; white-space: nowrap; }
+.tile-wrap { position: relative; flex: none; }
+.tile-wrap:has(.focus) .under { opacity: 1; }
+.chan { width: 400px; height: 225px; }
+.logo { position: absolute; top: 18px; left: 18px; font: 800 24px/1 var(--font); letter-spacing: -0.02em; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.live { position: absolute; top: 18px; right: 18px; font: 800 17px/1 var(--font); letter-spacing: .06em; background: var(--live); padding: 7px 10px; border-radius: 7px; }
+.now { position: absolute; left: 18px; right: 18px; bottom: 16px; }
+.now b { display: block; font: 600 var(--t-cap2)/1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now .progress { margin-top: 10px; height: 5px; }
+.now .progress i { background: var(--live); }
+
+/* ---------- Detail ---------- */
+.detail .body { bottom: auto; top: 250px; }
+.seasons { position: absolute; left: var(--safe-x); top: 720px; display: flex; gap: 8px; padding: 6px; border-radius: 999px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.seg { font: 600 var(--t-cap1)/1 var(--font); color: var(--fg-2); padding: 14px 28px; border-radius: 999px; }
+.seg.sel { color: #fff; background: var(--fill-2); }
+.seg.f.focus { background: #fff; color: #000; transform: scale(1.06); }
+.detail .eprow { position: absolute; left: 0; right: 0; top: 790px; }
+.ep.small { width: 440px; height: 248px; }
+.watched { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.5); display: grid; place-items: center; }
+.watched svg { width: 20px; height: 20px; }
+
+/* ---------- Player ---------- */
+.player { position: absolute; inset: 0; background: #000; }
+.player .art { animation: pan 18s linear infinite alternate; }
+@keyframes pan { from { transform: scale(1.15) translate(-30px, 10px); } to { transform: scale(1.15) translate(30px, -10px); } }
+.osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 140px var(--safe-x) var(--safe-y); background: linear-gradient(transparent, rgba(0,0,0,.8));
+  transition: opacity .35s var(--ease), transform .45s var(--ease); }
+.osd.hide { opacity: 0; transform: translateY(40px); pointer-events: none; }
+.osd .t { font: 700 var(--t-title3)/1.1 var(--font); letter-spacing: -0.02em; }
+.osd .s { font: 500 var(--t-cap1)/1.3 var(--font); color: var(--fg-2); margin-top: 8px; }
+.scrub { margin-top: 34px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.28); position: relative; }
+.scrub i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: #fff; }
+.scrub.f.focus { transform: scaleY(1.6); }
+.times { display: flex; justify-content: space-between; margin-top: 14px; font: 600 var(--t-cap2)/1 var(--font); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.osd .actions { margin-top: 30px; }
+.osd .btn { font-size: var(--t-cap1); padding: 16px 26px; border-radius: 14px; }
+.flash { position: absolute; left: 50%; top: 50%; width: 160px; height: 160px; margin: -80px; border-radius: 50%; background: rgba(0,0,0,.45);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: grid; place-items: center; opacity: 0; transform: scale(.8); transition: opacity .25s, transform .4s var(--spring); }
+.flash.on { opacity: 1; transform: scale(1); }
+.flash svg { width: 70px; height: 70px; }
+.banner { position: absolute; left: var(--safe-x); bottom: var(--safe-y); width: 880px; display: flex; gap: 28px; align-items: center; padding: 28px 32px; border-radius: 30px;
+  background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 20px 60px rgba(0,0,0,.5); transition: opacity .3s var(--ease), transform .45s var(--spring); }
+.banner.hide { opacity: 0; transform: translateY(30px) scale(.98); }
+.banner .num { font: 700 var(--t-title2)/1 var(--font); font-variant-numeric: tabular-nums; min-width: 90px; }
+.banner .lg { width: 150px; height: 84px; border-radius: 14px; position: relative; overflow: hidden; flex: none; display: grid; place-items: center; font: 800 30px/1 var(--font); }
+.banner .info { flex: 1; min-width: 0; }
+.banner .info b { font: 600 var(--t-callout)/1.2 var(--font); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner .info span { font: 500 var(--t-cap2)/1.4 var(--font); color: var(--fg-2); }
+.banner .progress { margin-top: 12px; }
+.banner .progress i { background: var(--live); }
+.footer-strip { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 0 var(--safe-y); background: linear-gradient(transparent, rgba(0,0,0,.9) 30%);
+  transition: transform .5s var(--ease), opacity .3s; }
+.footer-strip.hide { transform: translateY(100%); opacity: 0; }
+.footer-strip h4 { margin: 0 0 6px var(--safe-x); font: 600 var(--t-cap1)/1 var(--font); color: var(--fg-2); }
+.tile.playing::before { content: ""; position: absolute; inset: 0; border: 4px solid #fff; border-radius: inherit; z-index: 2; }
+
+/* ---------- Guide ---------- */
+.guide-top { position: absolute; left: var(--safe-x); right: var(--safe-x); top: 160px; height: 270px; display: flex; gap: 48px; }
+.preview { width: 480px; height: 270px; border-radius: 22px; overflow: hidden; position: relative; flex: none; }
+.gdesc { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-width: 0; }
+.gdesc .t { font: 700 var(--t-title3)/1.1 var(--font); letter-spacing: -0.02em; }
+.gdesc .s { font: 500 var(--t-cap1)/1.3 var(--font); color: var(--fg-2); }
+.gdesc p { margin: 0; font: 400 var(--t-cap1)/1.45 var(--font); color: var(--fg-2); max-width: 900px; }
+.grid { position: absolute; left: 0; right: 0; top: 470px; bottom: 0; }
+.ghead { position: absolute; left: 400px; right: 0; top: 0; height: 46px; font: 600 var(--t-cap2)/46px var(--font); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.ghead span { position: absolute; top: 0; }
+.grow { position: absolute; left: 0; right: 0; height: 92px; }
+.gch { position: absolute; left: var(--safe-x); width: 300px; white-space: nowrap; height: 80px; display: flex; align-items: center; gap: 16px; font: 600 var(--t-cap1)/1 var(--font); }
+.gch .n { color: var(--fg-3); font-variant-numeric: tabular-nums; width: 36px; }
+.gch .lgm { width: 92px; height: 52px; border-radius: 10px; position: relative; overflow: hidden; display: grid; place-items: center; font: 800 20px/1 var(--font); }
+.cell { position: absolute; height: 80px; border-radius: 14px; background: rgba(255,255,255,.07); padding: 0 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.cell b { font: 600 var(--t-cap2)/1.2 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell span { font: 500 20px/1.3 var(--font); color: var(--fg-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cell.nowc { background: rgba(255,255,255,.13); }
+.cell.f.focus { background: #fff; color: #000; transform: scale(1.04); box-shadow: 0 16px 36px rgba(0,0,0,.5); }
+.cell.f.focus span { color: rgba(0,0,0,.6); }
+.nowline { position: absolute; top: 40px; bottom: 0; width: 3px; background: var(--live); border-radius: 2px; z-index: 6; box-shadow: 0 0 12px rgba(255,66,69,.6); }
+.nowline::before { content: attr(data-t); position: absolute; top: -40px; left: 50%; transform: translateX(-50%); font: 700 20px/1 var(--font); background: var(--live); color: #fff; padding: 6px 8px; border-radius: 7px; }
+
+/* ---------- Search ---------- */
+.query { position: absolute; left: var(--safe-x); right: var(--safe-x); top: 190px; font: 600 var(--t-title2)/1 var(--font); letter-spacing: -0.02em; min-height: 70px; border-bottom: 2px solid var(--sep); padding-bottom: 18px; }
+.query .ph { color: var(--fg-3); font-weight: 500; }
+.query .caret { display: inline-block; width: 4px; height: 56px; background: var(--accent); vertical-align: -6px; margin-left: 4px; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.kbd { position: absolute; left: var(--safe-x); right: var(--safe-x); top: 320px; display: flex; gap: 6px; justify-content: space-between; }
+.key { font: 600 var(--t-cap1)/1 var(--font); color: var(--fg-2); width: 54px; height: 64px; border-radius: 12px; display: grid; place-items: center; }
+.key.wide { width: 120px; font-size: var(--t-cap2); }
+.key.f.focus { background: #fff; color: #000; transform: scale(1.18); }
+.results { position: absolute; left: 0; right: 0; top: 440px; }
+
+/* ---------- Settings ---------- */
+.settings { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; }
+.settings .side { width: 760px; display: grid; place-items: center; }
+.settings .glyph { width: 340px; height: 340px; border-radius: 80px; display: grid; place-items: center; background: linear-gradient(160deg, #3a3a3c, #1c1c1e); box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12); }
+.settings .glyph svg { width: 170px; height: 170px; color: #8e8e93; }
+.settings .list { flex: 1; padding: 200px var(--safe-x) 0 0; display: flex; flex-direction: column; gap: 12px; }
+.settings h2 { margin: 0 0 24px; font: 700 var(--t-title2)/1 var(--font); letter-spacing: -0.02em; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding: 26px 34px; border-radius: 20px; background: rgba(255,255,255,.06); font: 500 var(--t-body)/1.2 var(--font); }
+.srow .v { color: var(--fg-2); display: flex; align-items: center; gap: 12px; }
+.srow .v svg { width: 26px; height: 26px; opacity: .6; }
+.srow.f.focus { background: #fff; color: #000; transform: scale(1.04); box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+.srow.f.focus .v { color: rgba(0,0,0,.6); }
+
+/* ---------- Toast ---------- */
+#toast { position: absolute; left: 50%; top: 60px; transform: translate(-50%, -30px); opacity: 0; z-index: 40; font: 600 var(--t-cap1)/1 var(--font);
+  padding: 22px 34px; border-radius: 999px; background: var(--glass-strong); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 14px 40px rgba(0,0,0,.5); transition: opacity .3s, transform .45s var(--spring); white-space: nowrap; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-property: opacity, background-color, color !important; }
+}
+</style>
+
+<div class="app">
+  <div id="viewport">
+    <div id="stage" aria-label="TV screen mockup" role="application">
+      <div id="screen"></div>
+      <nav id="tabbar"></nav>
+      <div id="toast"></div>
+    </div>
+  </div>
+  <div class="remote" aria-label="Remote control">
+    <div class="grp">
+      <button data-k="ArrowLeft" aria-label="Left">◀</button><button data-k="ArrowUp" aria-label="Up">▲</button>
+      <button data-k="Enter" aria-label="Select">OK</button>
+      <button data-k="ArrowDown" aria-label="Down">▼</button><button data-k="ArrowRight" aria-label="Right">▶</button>
+    </div>
+    <div class="grp">
+      <button data-k="Escape">Back</button><button data-k="p" aria-label="Play or pause">▶︎❙❙</button>
+      <button data-k="PageUp">CH +</button><button data-k="PageDown">CH −</button><button data-k="g">Guide</button>
+    </div>
+    <span class="hint"><kbd>←↑↓→</kbd> move · <kbd>Enter</kbd> select · <kbd>Esc</kbd> back · <kbd>Space</kbd> play/pause · <kbd>PgUp/PgDn</kbd> channel · <kbd>G</kbd> guide</span>
+  </div>
+</div>
+
+<script>
+(() => {
+/* ================= Data (fictional catalogue) ================= */
+const NOW = 20 * 60 + 7; // 20:07, fixed so the guide is consistent
+
+const SERIES = [
+  { id: 'northbound', title: 'Northbound', h: 205, year: 2025, genre: { en: 'Drama', de: 'Drama' }, age: 16, seasons: [8, 10],
+    desc: { en: 'A ferry captain returns to the island she left twenty years ago, and finds the town keeping a secret about the last winter crossing.',
+            de: 'Eine Fährkapitänin kehrt auf die Insel zurück, die sie vor zwanzig Jahren verlassen hat, und stößt auf ein Geheimnis um die letzte Winterüberfahrt.' },
+    last: { s: 2, e: 5, left: 18, pct: 0.62 } },
+  { id: 'glass', title: 'Glass Harbor', h: 170, year: 2024, genre: { en: 'Thriller', de: 'Thriller' }, age: 16, seasons: [6, 6, 8],
+    desc: { en: 'A harbour inspector follows a trail of forged shipping papers into the city council.', de: 'Ein Hafeninspektor folgt gefälschten Frachtpapieren bis in den Stadtrat.' },
+    last: { s: 3, e: 2, left: 31, pct: 0.3 } },
+  { id: 'orbit', title: 'Orbit Kitchen', h: 30, year: 2026, genre: { en: 'Comedy', de: 'Komödie' }, age: 6, seasons: [12],
+    desc: { en: 'Three chefs run the only restaurant on a research station, with ingredients arriving every ninety days.', de: 'Drei Köche führen das einzige Restaurant einer Forschungsstation. Zutaten kommen alle neunzig Tage.' },
+    last: { s: 1, e: 9, left: 12, pct: 0.55 } },
+  { id: 'quiet', title: 'The Quiet Year', h: 280, year: 2023, genre: { en: 'Drama', de: 'Drama' }, age: 12, seasons: [8, 8],
+    desc: { en: 'Four siblings spend a year restoring their late father’s observatory.', de: 'Vier Geschwister restaurieren ein Jahr lang die Sternwarte ihres verstorbenen Vaters.' } },
+  { id: 'cinder', title: 'Cinder & Salt', h: 12, year: 2025, genre: { en: 'Crime', de: 'Krimi' }, age: 16, seasons: [10],
+    desc: { en: 'Two detectives, one coastline, and a fire that keeps starting in the same place.', de: 'Zwei Ermittlerinnen, eine Küste und ein Feuer, das immer am selben Ort ausbricht.' } },
+  { id: 'atlas', title: 'Atlas Lane', h: 140, year: 2026, genre: { en: 'Mystery', de: 'Mystery' }, age: 12, seasons: [8],
+    desc: { en: 'Every house on Atlas Lane has a door that was not there yesterday.', de: 'Jedes Haus in der Atlas Lane hat eine Tür, die gestern noch nicht da war.' } },
+  { id: 'paper', title: 'Paper Moons', h: 320, year: 2024, genre: { en: 'Comedy', de: 'Komödie' }, age: 0, seasons: [10, 10],
+    desc: { en: 'A family-run print shop takes on one last impossible order.', de: 'Eine Familiendruckerei nimmt einen letzten unmöglichen Auftrag an.' } },
+  { id: 'ridge', title: 'High Ridge', h: 95, year: 2025, genre: { en: 'Western', de: 'Western' }, age: 16, seasons: [8],
+    desc: { en: 'A rancher fights to keep the water rights her town depends on.', de: 'Eine Rancherin kämpft um die Wasserrechte, von denen ihre Stadt abhängt.' } },
+];
+const EP_TITLES = ['Arrival', 'Low Water', 'The Ledger', 'Fog Bell', 'Tide Line', 'Crossing', 'Ballast', 'Salt Roads', 'Night Ferry', 'Landfall', 'Undertow', 'Homeport'];
+const MOVIES = [
+  { id: 'm1', title: 'Second Light', h: 45, year: 2025, genre: { en: 'Drama', de: 'Drama' }, mins: 118, pct: 0.4, age: 12 },
+  { id: 'm2', title: 'Velocity Club', h: 0, year: 2026, genre: { en: 'Action', de: 'Action' }, mins: 104, age: 16 },
+  { id: 'm3', title: 'Deep Field', h: 230, year: 2024, genre: { en: 'Documentary', de: 'Dokumentation' }, mins: 92, age: 0 },
+  { id: 'm4', title: 'The Long Table', h: 25, year: 2025, genre: { en: 'Comedy', de: 'Komödie' }, mins: 101, age: 6 },
+  { id: 'm5', title: 'Ironbark', h: 110, year: 2023, genre: { en: 'Adventure', de: 'Abenteuer' }, mins: 126, age: 12 },
+  { id: 'm6', title: 'Paper Tigers', h: 300, year: 2026, genre: { en: 'Action', de: 'Action' }, mins: 97, age: 16 },
+  { id: 'm7', title: 'Coldwater', h: 190, year: 2025, genre: { en: 'Thriller', de: 'Thriller' }, mins: 109, age: 16 },
+  { id: 'm8', title: 'Lantern Bay', h: 55, year: 2024, genre: { en: 'Family', de: 'Familie' }, mins: 95, age: 0 },
+];
+const PROGS = {
+  News: ['Evening News', 'Weather', 'World Report', 'Business Today', 'Late Edition', 'Night Brief'],
+  Sports: ['Football: Live', 'Match Analysis', 'Tennis Highlights', 'Sports Desk', 'Cycling: Stage 14'],
+  Movies: ['Coldwater', 'Short Films', 'Second Light', 'Director’s Cut', 'Midnight Feature'],
+  Kids: ['Space Pals', 'Build It!', 'Ocean Friends', 'Story Time', 'Night Night'],
+  Docs: ['Deep Field', 'Wild Coasts', 'How It’s Made', 'The Glacier', 'Ancient Roads'],
+};
+const CHANNELS = [
+  { n: 1, name: 'Nordlicht 1', s: 'N1', h: 210, cat: 'News', fav: true },
+  { n: 2, name: 'Arena Sports', s: 'AS', h: 130, cat: 'Sports', fav: true },
+  { n: 3, name: 'Cine One', s: 'C1', h: 0, cat: 'Movies', fav: true },
+  { n: 4, name: 'Planet Docs', s: 'PD', h: 160, cat: 'Docs' },
+  { n: 5, name: 'Kids Max', s: 'KM', h: 45, cat: 'Kids' },
+  { n: 6, name: 'News 24', s: '24', h: 220, cat: 'News', fav: true },
+  { n: 7, name: 'Arena 2', s: 'A2', h: 120, cat: 'Sports' },
+  { n: 8, name: 'Cine Classic', s: 'CC', h: 340, cat: 'Movies' },
+];
+// A schedule from 19:00 to 23:30 per channel, deterministic.
+CHANNELS.forEach((c, i) => {
+  const names = PROGS[c.cat]; let t = 19 * 60 - (i % 3) * 10; let k = i;
+  c.sched = [];
+  while (t < 23 * 60 + 30) { const d = [30, 45, 60, 90, 25, 120][(k * 7 + i) % 6]; c.sched.push({ t: names[k % names.length], a: t, b: t + d }); t += d; k++; }
+});
+const onNow = (c) => c.sched.find(p => p.a <= NOW && p.b > NOW);
+const nextOf = (c) => c.sched.find(p => p.a >= onNow(c).b);
+const hm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/* ================= Strings: English and German ================= */
+const T = {
+  en: { home: 'Home', series: 'Series', movies: 'Movies', live: 'Live TV', guide: 'Guide', search: 'Search', settings: 'Settings',
+    resume: 'Resume', startOver: 'Start Over', episodes: 'Episodes', fav: 'Favourite', play: 'Play', watchLive: 'Watch Live',
+    continue: 'Continue Watching', favCh: 'Favourite Channels', newEps: 'New Episodes', added: 'Recently Added Movies',
+    yourSeries: 'Your Series', updated: 'Recently Updated', season: 'Season', ep: 'Episode', left: 'min left', mins: 'min',
+    upNext: 'Up Next', lastWatched: 'Continue Watching', seasons: (n) => n === 1 ? '1 Season' : `${n} Seasons`,
+    news: 'News', sports: 'Sports', moviesCh: 'Movies', kids: 'Kids', docs: 'Documentaries', all: 'All Channels',
+    now: 'Now', next: 'Next', today: 'Today', searchPh: 'Shows, movies and channels', results: 'Results', topSearches: 'Popular',
+    subs: 'Subtitles: Off', audio: 'Audio: German', nextEp: 'Next Episode', exit: 'Back from here leaves for the Google TV home screen',
+    account: 'Account', language: 'Language', langVal: 'English', refresh: 'Guide Refresh', refreshVal: 'Daily at 04:00',
+    lock: 'Parental Lock', off: 'Off', playerS: 'Player', hw: 'Hardware decoding', about: 'About', aboutVal: 'Mockup 0.1',
+    acct: 'Xtream · tv.example.net', liveNow: 'LIVE', actionCh: 'Action', favourites: 'Favourites', channelsLabel: 'Channels' },
+  de: { home: 'Start', series: 'Serien', movies: 'Filme', live: 'Live-TV', guide: 'Programm', search: 'Suchen', settings: 'Einstellungen',
+    resume: 'Fortsetzen', startOver: 'Von vorne', episodes: 'Folgen', fav: 'Favorit', play: 'Abspielen', watchLive: 'Live ansehen',
+    continue: 'Weiterschauen', favCh: 'Lieblingssender', newEps: 'Neue Folgen', added: 'Neu hinzugefügte Filme',
+    yourSeries: 'Deine Serien', updated: 'Kürzlich aktualisiert', season: 'Staffel', ep: 'Folge', left: 'Min. übrig', mins: 'Min.',
+    upNext: 'Als Nächstes', lastWatched: 'Weiterschauen', seasons: (n) => n === 1 ? '1 Staffel' : `${n} Staffeln`,
+    news: 'Nachrichten', sports: 'Sport', moviesCh: 'Filme', kids: 'Kinder', docs: 'Dokus', all: 'Alle Sender',
+    now: 'Jetzt', next: 'Danach', today: 'Heute', searchPh: 'Serien, Filme und Sender', results: 'Ergebnisse', topSearches: 'Beliebt',
+    subs: 'Untertitel: Aus', audio: 'Audio: Deutsch', nextEp: 'Nächste Folge', exit: 'Zurück verlässt die App zum Google TV-Startbildschirm',
+    account: 'Konto', language: 'Sprache', langVal: 'Deutsch', refresh: 'Programm aktualisieren', refreshVal: 'Täglich um 04:00',
+    lock: 'Kindersicherung', off: 'Aus', playerS: 'Player', hw: 'Hardware-Dekodierung', about: 'Info', aboutVal: 'Mockup 0.1',
+    acct: 'Xtream · tv.example.net', liveNow: 'LIVE', actionCh: 'Action', favourites: 'Favoriten', channelsLabel: 'Sender' },
+};
+let lang = 'en';
+const t = (k) => T[lang][k];
+const L = (o) => (typeof o === 'object' ? o[lang] : o);
+
+/* ================= Artwork ================= */
+function art(h, v = 0) {
+  const a = (h + 360) % 360, b = (h + 40 + v * 13) % 360, c = (h + 200) % 360;
+  return `background:
+    radial-gradient(70% 90% at ${62 + (v % 3) * 8}% ${28 + (v % 4) * 6}%, hsla(${a},78%,62%,.95) 0%, hsla(${a},78%,50%,0) 62%),
+    radial-gradient(60% 70% at ${18 + (v % 5) * 4}% 88%, hsla(${b},70%,42%,.9) 0%, hsla(${b},70%,30%,0) 70%),
+    conic-gradient(from ${(v * 37) % 360}deg at 80% 110%, hsla(${c},45%,22%,.9), hsla(${a},55%,18%,.6), hsla(${c},45%,22%,.9)),
+    linear-gradient(165deg, hsl(${c},35%,14%), hsl(${a},45%,6%));`;
+}
+const artEl = (h, v, extra = '') => `<div class="art grain" style="${art(h, v)}${extra}"></div>`;
+
+/* ================= Icons (simple strokes) ================= */
+const I = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>',
+  restart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.6 3.6 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.4 0 5.5 3.1 4.3 6.3C19.5 15.4 12 20 12 20z"/></svg>',
+  heartF: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7.5-4.6-9.3-9.2C1.5 7.6 3.6 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 3.4 0 5.5 3.1 4.3 6.3C19.5 15.4 12 20 12 20z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+  cc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 10.5a2 2 0 1 0 0 3M17 10.5a2 2 0 1 0 0 3"/></svg>',
+  audio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5v13a1 1 0 0 0 1.5.86L16 13.7V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.3L6.5 4.64A1 1 0 0 0 5 5.5z"/></svg>',
+};
+
+/* ================= State ================= */
+const S = {
+  tab: 'home',        // top-level tab
+  view: null,         // { kind: 'series'|'movie', id } detail on top of a tab
+  player: null,       // { kind: 'vod'|'live', ... }
+  season: {},         // chosen season per series
+  favs: new Set(['northbound', 'm1']),
+  chan: 1,            // last live channel
+};
+const TABS = ['home', 'series', 'movies', 'live', 'guide', 'search', 'settings'];
+let query = '';
+
+/* ================= Rendering ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const stage = $('#stage'), screenEl = $('#screen'), tabbar = $('#tabbar');
+
+function renderTabbar() {
+  const label = (k) => k === 'search' ? I.search : k === 'settings' ? I.gear : t(k);
+  tabbar.innerHTML = `<div class="cap">${TABS.map(k =>
+    `<div class="tab f ${S.tab === k ? 'sel' : ''}" data-row="tabs" data-act="tab" data-arg="${k}" aria-label="${t(k)}">${label(k)}</div>`).join('')}</div>`;
+}
+
+const epTile = (s, sn, e, opts = {}) => {
+  const ttl = EP_TITLES[(e - 1 + sn * 3) % EP_TITLES.length];
+  const watched = opts.watched, pct = opts.pct;
+  return `<div class="tile-wrap"><div class="tile f ep ${opts.small ? 'small' : ''}" data-act="${opts.act || 'playEp'}" data-arg="${s.id}|${sn}|${e}">
+    ${artEl(s.h + e * 9, e + sn)}<div class="sheen"></div>
+    ${watched ? `<div class="watched">${I.check}</div>` : ''}
+    <div class="ep-cap"><b>${opts.title || `${e}. ${ttl}`}</b><span>${opts.sub || `${t('season')} ${sn} · ${42 + (e % 4) * 3} ${t('mins')}`}</span>
+    ${pct ? `<div class="progress"><i style="width:${pct * 100}%"></i></div>` : ''}</div></div></div>`;
+};
+const posterTile = (it, act) => `<div class="tile-wrap"><div class="tile f poster" data-act="${act}" data-arg="${it.id}">
+  ${artEl(it.h, it.year % 7)}<div class="sheen"></div><div class="ttl">${it.title}</div></div>
+  <div class="under">${it.title} · ${L(it.genre)}</div></div>`;
+const chanTile = (c, opts = {}) => {
+  const p = onNow(c), pct = (NOW - p.a) / (p.b - p.a);
+  return `<div class="tile-wrap"><div class="tile f chan ${opts.playing ? 'playing' : ''}" data-act="playLive" data-arg="${c.n}">
+    ${artEl(c.h, c.n)}<div class="sheen"></div><div class="logo">${c.s}</div><div class="live">${t('liveNow')}</div>
+    <div class="now"><b>${p.t}</b><div class="progress"><i style="width:${pct * 100}%"></i></div></div></div>
+    <div class="under">${c.n} · ${c.name} · ${hm(p.a)}–${hm(p.b)}</div></div>`;
+};
+const row = (id, title, tiles) => `<section class="row" data-rowbox="${id}"><h3>${title}</h3><div class="track" data-track="${id}">${tiles}</div></section>`;
+const rowTiles = (html, id) => html.replace(/class="tile f /g, `data-row="${id}" class="tile f `);
+
+function heroSeries(s, opts = {}) {
+  const l = s.last;
+  return `<div class="hero">${artEl(s.h, 1)}<div class="shade"></div>
+    <div class="body">
+      ${opts.eyebrow ? `<div class="eyebrow">${opts.eyebrow}</div>` : ''}
+      <div class="wordmark">${s.title}</div>
+      <div class="meta">${l ? `${t('season')} ${l.s}, ${t('ep')} ${l.e}: ${EP_TITLES[(l.e - 1 + l.s * 3) % EP_TITLES.length]}` : ''}
+        <span>·</span><span>${L(s.genre)}</span><span class="pill">${s.age}+</span></div>
+      ${l ? `<div class="resume-line"><div class="progress"><i style="width:${l.pct * 100}%"></i></div>${l.left} ${t('left')}</div>` : ''}
+      <div class="actions">
+        <div class="btn f" data-row="hero" data-act="playEp" data-arg="${s.id}|${l.s}|${l.e}|resume">${I.play}${t('resume')}</div>
+        <div class="btn f" data-row="hero" data-act="playEp" data-arg="${s.id}|${l.s}|${l.e}|start">${I.restart}${t('startOver')}</div>
+        <div class="btn f" data-row="hero" data-act="openSeries" data-arg="${s.id}">${I.list}${t('episodes')}</div>
+      </div>
+    </div></div>`;
+}
+
+const SCREENS = {
+  home() {
+    // Opens on the series watched last: one press resumes it.
+    const last = SERIES[0];
+    const cw = SERIES.filter(s => s.last).slice(1).map(s =>
+      epTile(s, s.last.s, s.last.e, { pct: s.last.pct, title: s.title, sub: `${t('season')} ${s.last.s}, ${t('ep')} ${s.last.e} · ${s.last.left} ${t('left')}` }))
+      .concat(MOVIES.filter(m => m.pct).map(m => `<div class="tile-wrap"><div class="tile f ep" data-act="playMovie" data-arg="${m.id}">${artEl(m.h, 2)}<div class="sheen"></div>
+        <div class="ep-cap"><b>${m.title}</b><span>${Math.round(m.mins * (1 - m.pct))} ${t('left')}</span><div class="progress"><i style="width:${m.pct * 100}%"></i></div></div></div></div>`)).join('');
+    const upnext = [6, 7, 8].map(e => epTile(last, 2, e, {})).join('');
+    return heroSeries(last, { eyebrow: t('lastWatched') }) + `<div class="rows">
+      ${row('cw', t('continue'), rowTiles(cw, 'cw'))}
+      ${row('upnext', `${t('upNext')}: ${last.title}`, rowTiles(upnext, 'upnext'))}
+      ${row('fav', t('favCh'), rowTiles(CHANNELS.filter(c => c.fav).map(c => chanTile(c)).join(''), 'fav'))}
+      ${row('new', t('newEps'), rowTiles(SERIES.slice(3).map(s => posterTile(s, 'openSeries')).join(''), 'new'))}
+      ${row('added', t('added'), rowTiles(MOVIES.map(m => posterTile(m, 'openMovie')).join(''), 'added'))}
+    </div>`;
+  },
+  series() {
+    const mine = SERIES.filter(s => s.last || S.favs.has(s.id));
+    return `<div style="height:200px"></div><div class="rows" style="margin-top:0">
+      ${row('mine', t('yourSeries'), rowTiles(mine.map(s => posterTile(s, 'openSeries')).join(''), 'mine'))}
+      ${row('upd', t('updated'), rowTiles(SERIES.slice().reverse().map(s => posterTile(s, 'openSeries')).join(''), 'upd'))}
+      ${row('drama', 'Drama · Crime', rowTiles(SERIES.filter(s => ['Drama', 'Crime', 'Thriller'].includes(s.genre.en)).map(s => posterTile(s, 'openSeries')).join(''), 'drama'))}
+    </div>`;
+  },
+  movies() {
+    return `<div style="height:200px"></div><div class="rows" style="margin-top:0">
+      ${row('mc', t('continue'), rowTiles(MOVIES.filter(m => m.pct).map(m => posterTile(m, 'openMovie')).join(''), 'mc'))}
+      ${row('ma', t('added'), rowTiles(MOVIES.map(m => posterTile(m, 'openMovie')).join(''), 'ma'))}
+      ${row('mx', t('actionCh'), rowTiles(MOVIES.filter(m => ['Action', 'Thriller', 'Adventure'].includes(m.genre.en)).map(m => posterTile(m, 'openMovie')).join(''), 'mx'))}
+    </div>`;
+  },
+  live() {
+    const c = CHANNELS.find(x => x.n === S.chan), p = onNow(c), nx = nextOf(c);
+    const cats = [['News', 'news'], ['Sports', 'sports'], ['Movies', 'moviesCh'], ['Docs', 'docs'], ['Kids', 'kids']];
+    return `<div class="hero">${artEl(c.h, c.n)}<div class="shade"></div>
+      <div class="body"><div class="eyebrow">${c.n} · ${c.name}</div><div class="wordmark" style="font-size:96px">${p.t}</div>
+        <div class="meta"><span style="color:var(--live);font-weight:700">● ${t('liveNow')}</span><span>${hm(p.a)}–${hm(p.b)}</span><span>·</span><span>${t('next')}: ${nx.t} ${hm(nx.a)}</span></div>
+        <div class="resume-line"><div class="progress"><i style="width:${(NOW - p.a) / (p.b - p.a) * 100}%;background:var(--live)"></i></div>${p.b - NOW} ${t('left')}</div>
+        <div class="actions"><div class="btn f" data-row="hero" data-act="playLive" data-arg="${c.n}">${I.play}${t('watchLive')}</div>
+        <div class="btn f" data-row="hero" data-act="tab" data-arg="guide">${I.list}${t('guide')}</div></div></div></div>
+      <div class="rows">
+        ${row('lf', t('favourites'), rowTiles(CHANNELS.filter(x => x.fav).map(x => chanTile(x)).join(''), 'lf'))}
+        ${cats.map(([cat, k]) => row('l' + cat, t(k), rowTiles(CHANNELS.filter(x => x.cat === cat).map(x => chanTile(x)).join(''), 'l' + cat))).join('')}
+      </div>`;
+  },
+  guide() {
+    const start = 19 * 60 + 30, end = 22 * 60 + 30, x0 = 400, x1 = 1840, ppm = (x1 - x0) / (end - start);
+    const X = (m) => x0 + (Math.max(m, start) - start) * ppm;
+    const c = CHANNELS.find(x => x.n === S.chan);
+    let head = ''; for (let m = start; m < end; m += 30) if (Math.abs(m - NOW) > 12) head += `<span style="left:${(m - start) * ppm}px">${hm(m)}</span>`;
+    const rows = CHANNELS.slice(0, 6).map((ch, i) => {
+      const cells = ch.sched.filter(p => p.b > start && p.a < end).map(p => {
+        const l = X(p.a), r = Math.min(X(p.b), x1) - 8;
+        return `<div class="cell f ${p.a <= NOW && p.b > NOW ? 'nowc' : ''}" data-row="g${i}" data-act="playLive" data-arg="${ch.n}" data-prog="${ch.n}|${p.a}" style="left:${l}px;width:${Math.max(40, r - l)}px">
+          <b>${p.t}</b><span>${hm(p.a)}–${hm(p.b)}</span></div>`;
+      }).join('');
+      return `<div class="grow" style="top:${56 + i * 92}px"><div class="gch"><span class="n">${ch.n}</span><span class="lgm">${artEl(ch.h, ch.n)}<span style="position:relative">${ch.s}</span></span>${ch.name}</div>${cells}</div>`;
+    }).join('');
+    return `<div class="guide-top"><div class="preview">${artEl(c.h, c.n)}<div class="live">${t('liveNow')}</div><div class="logo">${c.s}</div></div>
+      <div class="gdesc" id="gdesc"></div></div>
+      <div class="grid"><div class="ghead">${head}</div><div class="nowline" data-t="${hm(NOW)}" style="left:${X(NOW)}px"></div>${rows}</div>`;
+  },
+  search() {
+    const keys = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const all = [...SERIES.map(s => ({ ...s, k: 'openSeries' })), ...MOVIES.map(m => ({ ...m, k: 'openMovie' }))];
+    const hits = query ? all.filter(x => x.title.toLowerCase().includes(query)) : all.slice(0, 7);
+    return `<div class="query">${query ? `${query}<span class="caret"></span>` : `<span class="ph">${t('searchPh')}</span><span class="caret"></span>`}</div>
+      <div class="kbd">${keys.map(k => `<div class="key f" data-row="kb" data-act="type" data-arg="${k}">${k}</div>`).join('')}
+        <div class="key f wide" data-row="kb" data-act="type" data-arg="space">␣</div><div class="key f wide" data-row="kb" data-act="type" data-arg="del">⌫</div></div>
+      <div class="results">${row('res', query ? t('results') : t('topSearches'), rowTiles(hits.map(x => posterTile(x, x.k)).join(''), 'res'))}</div>`;
+  },
+  settings() {
+    const r = (label, val, act = '') => `<div class="srow f" data-row="set" ${act ? `data-act="${act}"` : ''}><span>${label}</span><span class="v">${val}${I.chev}</span></div>`;
+    return `<div class="settings"><div class="side"><div class="glyph">${I.gear}</div></div><div class="list">
+      <h2>${t('settings')}</h2>
+      ${r(t('account'), t('acct'))}${r(t('language'), t('langVal'), 'lang')}${r(t('refresh'), t('refreshVal'))}
+      ${r(t('lock'), t('off'))}${r(t('playerS'), t('hw'))}${r(t('about'), t('aboutVal'))}</div></div>`;
+  },
+  seriesDetail(id) {
+    const s = SERIES.find(x => x.id === id), l = s.last || { s: 1, e: 1, pct: 0 };
+    const sn = S.season[id] || l.s;
+    const eps = Array.from({ length: s.seasons[sn - 1] }, (_, i) => i + 1).map(e =>
+      epTile(s, sn, e, { small: true, watched: s.last && (sn < l.s || (sn === l.s && e < l.e)), pct: s.last && sn === l.s && e === l.e ? l.pct : 0 })).join('');
+    const fav = S.favs.has(id);
+    return `<div class="hero detail">${artEl(s.h, 1)}<div class="shade"></div>
+      <div class="body"><div class="wordmark">${s.title}</div>
+        <div class="meta"><span>${s.year}</span><span>·</span><span>${L(s.genre)}</span><span>·</span><span>${t('seasons')(s.seasons.length)}</span><span class="pill">${s.age}+</span></div>
+        <div class="desc">${L(s.desc)}</div>
+        <div class="actions">
+          <div class="btn f" data-row="hero" data-act="playEp" data-arg="${s.id}|${l.s}|${l.e}|resume">${I.play}${s.last ? `${t('resume')} S${l.s} E${l.e}` : t('play')}</div>
+          <div class="btn f" data-row="hero" data-act="playEp" data-arg="${s.id}|${l.s}|${l.e}|start">${I.restart}${t('startOver')}</div>
+          <div class="btn f icon" data-row="hero" data-act="fav" data-arg="${id}" aria-label="${t('fav')}">${fav ? I.heartF : I.heart}</div>
+        </div></div>
+      <div class="seasons">${s.seasons.map((_, i) => `<div class="seg f ${sn === i + 1 ? 'sel' : ''}" data-row="seasons" data-act="season" data-arg="${id}|${i + 1}">${t('season')} ${i + 1}</div>`).join('')}</div>
+      <div class="eprow"><div class="track" data-track="eps">${rowTiles(eps, 'eps')}</div></div></div>`;
+  },
+  movieDetail(id) {
+    const m = MOVIES.find(x => x.id === id), fav = S.favs.has(id);
+    return `<div class="hero detail">${artEl(m.h, 2)}<div class="shade"></div>
+      <div class="body" style="top:330px"><div class="wordmark">${m.title}</div>
+        <div class="meta"><span>${m.year}</span><span>·</span><span>${L(m.genre)}</span><span>·</span><span>${m.mins} ${t('mins')}</span><span class="pill">${m.age}+</span></div>
+        <div class="desc">${lang === 'de' ? 'Ein fiktiver Film für dieses Mockup. Die echte App zeigt hier Beschreibung, Besetzung und Bewertung aus dem Xtream-Konto.' : 'A fictional film for this mockup. The real app shows the plot, cast and rating from the Xtream account here.'}</div>
+        ${m.pct ? `<div class="resume-line"><div class="progress"><i style="width:${m.pct * 100}%"></i></div>${Math.round(m.mins * (1 - m.pct))} ${t('left')}</div>` : ''}
+        <div class="actions">
+          <div class="btn f" data-row="hero" data-act="playMovie" data-arg="${id}">${I.play}${m.pct ? t('resume') : t('play')}</div>
+          ${m.pct ? `<div class="btn f" data-row="hero" data-act="playMovie" data-arg="${id}">${I.restart}${t('startOver')}</div>` : ''}
+          <div class="btn f icon" data-row="hero" data-act="fav" data-arg="${id}" aria-label="${t('fav')}">${fav ? I.heartF : I.heart}</div>
+        </div></div></div>`;
+  },
+  player() {
+    const p = S.player;
+    if (p.kind === 'live') {
+      const c = CHANNELS.find(x => x.n === p.n), pr = onNow(c), nx = nextOf(c);
+      return `<div class="player">${artEl(c.h, c.n)}
+        <div class="banner" id="banner"><div class="num">${c.n}</div><div class="lg">${artEl(c.h, c.n)}<span style="position:relative">${c.s}</span></div>
+          <div class="info"><b>${pr.t}</b><span>${t('now')} ${hm(pr.a)}–${hm(pr.b)} · ${t('next')}: ${nx.t}</span><div class="progress"><i style="width:${(NOW - pr.a) / (pr.b - pr.a) * 100}%"></i></div></div></div>
+        <div class="footer-strip hide" id="strip"><h4>${t('all')}</h4><div class="track" data-track="strip">${rowTiles(CHANNELS.map(x => chanTile(x, { playing: x.n === p.n })).join(''), 'strip')}</div></div>
+        <div class="flash" id="flash"></div></div>`;
+    }
+    return `<div class="player">${artEl(p.h, 3)}
+      <div class="osd" id="osd"><div class="t">${p.title}</div><div class="s">${p.sub}</div>
+        <div class="scrub f" data-row="scrub" data-act="toggle" id="scrub"><i style="width:${p.pos / p.dur * 100}%"></i></div>
+        <div class="times"><span>${clock(p.pos)}</span><span>−${clock(p.dur - p.pos)}</span></div>
+        <div class="actions">
+          <div class="btn f" data-row="osd" data-act="noop">${I.cc}${t('subs')}</div>
+          <div class="btn f" data-row="osd" data-act="noop">${I.audio}${t('audio')}</div>
+          ${p.kind === 'ep' ? `<div class="btn f" data-row="osd" data-act="nextEp">${I.next}${t('nextEp')}</div>` : ''}
+        </div></div>
+      <div class="flash" id="flash"></div></div>`;
+  },
+};
+const clock = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+
+/* ================= Focus engine (directional, like tvOS) ================= */
+let cur = null;
+const memory = { kb: 0 }; // last focused element index per row (the keyboard starts at A)
+const scope = () => S.player ? $('.player', screenEl) : stage;
+
+function focusables() {
+  return [...scope().querySelectorAll('.f')].filter(el => !el.closest('.hide') && el.offsetParent !== null);
+}
+function setFocus(el, dir) {
+  if (!el) return;
+  if (cur) cur.classList.remove('focus');
+  cur = el; el.classList.add('focus');
+  // Lean toward the direction of travel, then settle (hint in the direction of the gesture).
+  if (el.classList.contains('tile')) {
+    const tilt = { left: [0, 4], right: [0, -4], up: [-4, 0], down: [4, 0] }[dir] || [0, 0];
+    el.style.setProperty('--rx', tilt[0] + 'deg'); el.style.setProperty('--ry', tilt[1] + 'deg');
+    el.style.setProperty('--sx', dir === 'left' ? '20%' : dir === 'right' ? '80%' : '50%');
+    clearTimeout(el._t); el._t = setTimeout(() => { el.style.setProperty('--rx', '0deg'); el.style.setProperty('--ry', '0deg'); }, 260);
+  }
+  const r = el.dataset.row;
+  if (r) { const list = [...scope().querySelectorAll(`.f[data-row="${r}"]`)]; memory[r] = list.indexOf(el); }
+  reveal(el);
+  onFocusChange(el);
+}
+function rectOf(el) { return el.getBoundingClientRect(); }
+function move(dir) {
+  const items = focusables();
+  if (!cur || !items.includes(cur)) { setFocus(items[0], dir); return; }
+  const a = rectOf(cur), ax = (a.left + a.right) / 2, ay = (a.top + a.bottom) / 2;
+  const horiz = dir === 'left' || dir === 'right';
+  let best = null, bestScore = Infinity;
+  for (const el of items) {
+    if (el === cur) continue;
+    const b = rectOf(el), bx = (b.left + b.right) / 2, by = (b.top + b.bottom) / 2;
+    let primary, secondary;
+    if (dir === 'right') { if (b.left < a.right - 4 && bx <= ax + 2) continue; primary = Math.max(0, b.left - a.right); secondary = Math.abs(by - ay); }
+    if (dir === 'left') { if (b.right > a.left + 4 && bx >= ax - 2) continue; primary = Math.max(0, a.left - b.right); secondary = Math.abs(by - ay); }
+    if (dir === 'down') { if (by <= ay + 4) continue; primary = Math.max(0, b.top - a.bottom); secondary = Math.abs(bx - ax); }
+    if (dir === 'up') { if (by >= ay - 4) continue; primary = Math.max(0, a.top - b.bottom); secondary = Math.abs(bx - ax); }
+    if (horiz && cur.dataset.row && el.dataset.row !== cur.dataset.row) secondary += 2000; // stay in the row
+    const score = primary + secondary * (horiz ? 2.5 : 0.6);
+    if (score < bestScore) { bestScore = score; best = el; }
+  }
+  if (!best) { edge(dir); return; }
+  // Entering a row vertically returns to where you left it (tvOS remembers focus per row).
+  if (!horiz && best.dataset.row && best.dataset.row !== cur.dataset.row && memory[best.dataset.row] != null && !best.dataset.row.startsWith('g')) {
+    const list = [...scope().querySelectorAll(`.f[data-row="${best.dataset.row}"]`)];
+    best = list[memory[best.dataset.row]] || best;
+  }
+  setFocus(best, dir);
+}
+function edge(dir) { // a soft bump at the end of a row: focus can't go further
+  if (!cur) return;
+  const d = { left: [-12, 0], right: [12, 0], up: [0, -12], down: [0, 12] }[dir];
+  cur.animate([{ translate: '0 0' }, { translate: `${d[0]}px ${d[1]}px` }, { translate: '0 0' }], { duration: 260, easing: 'ease-out' });
+}
+
+/* Keep the focused item on screen: rows slide sideways, the page slides up. */
+function reveal(el) {
+  const track = el.closest('.track');
+  if (track) {
+    const wrap = el.closest('.tile-wrap') || el;
+    const left = wrap.offsetLeft, w = wrap.offsetWidth;
+    let off = +(track.dataset.off || 0);
+    const minX = 80, maxX = 1920 - 80;
+    if (left + off < minX) off = minX - left;
+    if (left + w + off > maxX) off = maxX - w - left;
+    off = Math.min(0, off);
+    track.dataset.off = off; track.style.transform = `translateX(${off}px)`;
+  }
+  const sc = $('.scroller', screenEl);
+  if (sc && !S.player) {
+    let y = 0;
+    const box = el.closest('[data-rowbox]');
+    if (box && !el.closest('#tabbar')) {
+      const top = box.offsetTop + box.offsetParent.offsetTop;
+      y = -(top - (sc.dataset.anchor ? +sc.dataset.anchor : 470));
+      y = Math.min(0, Math.max(y, -(sc.scrollHeight - 1080)));
+    }
+    sc.style.transform = `translateY(${y}px)`;
+    tabbar.classList.toggle('away', y < -60);
+  }
+}
+
+function onFocusChange(el) {
+  if (S.tab === 'guide' && !S.view && el.dataset.prog) {
+    const [n, a] = el.dataset.prog.split('|').map(Number);
+    const ch = CHANNELS.find(c => c.n === n), p = ch.sched.find(x => x.a === a);
+    const on = p.a <= NOW && p.b > NOW;
+    $('#gdesc').innerHTML = `<div class="eyebrow">${ch.n} · ${ch.name}${on ? ` · <span style="color:var(--live)">● ${t('liveNow')}</span>` : ''}</div>
+      <div class="t">${p.t}</div><div class="s">${t('today')} · ${hm(p.a)}–${hm(p.b)} · ${p.b - p.a} ${t('mins')}</div>
+      <p>${lang === 'de' ? 'Programmbeschreibung aus dem XMLTV-Guide.' : 'Programme description from the XMLTV guide.'}</p>`;
+  }
+}
+
+/* ================= Navigation ================= */
+function show({ keep } = {}) {
+  let html;
+  if (S.player) html = SCREENS.player();
+  else if (S.view) html = S.view.kind === 'series' ? SCREENS.seriesDetail(S.view.id) : SCREENS.movieDetail(S.view.id);
+  else html = SCREENS[S.tab]();
+  const scroll = !S.player && !['guide', 'search', 'settings'].includes(S.tab) || S.view;
+  screenEl.innerHTML = S.player || !scroll ? html : `<div class="scroller">${html}</div>`;
+  tabbar.style.display = S.player || S.view ? 'none' : '';
+  tabbar.classList.remove('away');
+  renderTabbar();
+  cur = null;
+  const want = keep && stage.querySelector(keep);
+  setFocus(want || firstFocus());
+  // The guide always opens describing what is on now on the current channel.
+  if (!S.player && !S.view && S.tab === 'guide' && !(cur && cur.dataset.prog)) onFocusChange(stage.querySelector(`.cell.nowc[data-prog^="${S.chan}|"]`) || stage.querySelector('.cell.nowc'));
+  if (S.player) armOsd();
+}
+function firstFocus() {
+  if (S.player) return S.player.kind === 'live' ? null : $('#scrub');
+  if (S.view) return stage.querySelector('[data-row="hero"]');
+  if (S.tab === 'guide') return stage.querySelector('.cell.nowc');
+  if (S.tab === 'home' || S.tab === 'live') return stage.querySelector('[data-row="hero"]');
+  if (S.tab === 'search') return stage.querySelector('[data-row="kb"]');
+  return stage.querySelector('.f:not(.tab)') || stage.querySelector('.tab.sel');
+}
+const back = [];
+function open(view) { back.push({ tab: S.tab, view: S.view, focus: cur && selectorFor(cur) }); S.view = view; show(); }
+function selectorFor(el) { return el.dataset.arg ? `[data-act="${el.dataset.act}"][data-arg="${CSS.escape(el.dataset.arg)}"]` : null; }
+
+let osdTimer;
+function armOsd() {
+  const o = $('#osd') || $('#banner');
+  if (!o) return;
+  o.classList.remove('hide'); clearTimeout(osdTimer);
+  osdTimer = setTimeout(() => { if (!$('#strip') || $('#strip').classList.contains('hide')) o.classList.add('hide'); }, 4000);
+}
+function flash(icon) { const f = $('#flash'); if (!f) return; f.innerHTML = icon; f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 600); }
+let playing = true;
+let vodTick;
+function startVod(p) {
+  S.player = p; playing = true; show();
+  clearInterval(vodTick);
+  vodTick = setInterval(() => { if (S.player && S.player.kind !== 'live' && playing) { S.player.pos = Math.min(S.player.dur, S.player.pos + 1); updScrub(); } }, 1000);
+}
+function updScrub() {
+  const p = S.player, s = $('#scrub'); if (!s) return;
+  s.firstElementChild.style.width = p.pos / p.dur * 100 + '%';
+  const ts = $('.times'); ts.children[0].textContent = clock(p.pos); ts.children[1].textContent = '−' + clock(p.dur - p.pos);
+}
+function openStrip(n) {
+  $('#strip').classList.remove('hide'); armOsd();
+  setFocus(stage.querySelector(`[data-row="strip"][data-arg="${n}"]`));
+}
+function tune(n) { // changing channel shows the banner at once; the stream catches up behind it
+  const strip = $('#strip'), wasOpen = strip && !strip.classList.contains('hide');
+  S.player.n = n; S.chan = n; show();
+  if (wasOpen) openStrip(n);
+}
+function zap(d) {
+  const i = CHANNELS.findIndex(c => c.n === S.player.n);
+  tune(CHANNELS[(i + d + CHANNELS.length) % CHANNELS.length].n);
+}
+
+const ACT = {
+  tab(k) { S.tab = k; S.view = null; back.length = 0; show({ keep: `.tab[data-arg="${k}"]` }); },
+  openSeries(id) { open({ kind: 'series', id }); },
+  openMovie(id) { open({ kind: 'movie', id }); },
+  season(arg) { const [id, n] = arg.split('|'); S.season[id] = +n; show({ keep: `.seg[data-arg="${CSS.escape(arg)}"]` }); },
+  fav(id) { S.favs.has(id) ? S.favs.delete(id) : S.favs.add(id); show({ keep: `[data-act="fav"]` }); toast(S.favs.has(id) ? (lang === 'de' ? 'Zu Favoriten hinzugefügt' : 'Added to Favourites') : (lang === 'de' ? 'Aus Favoriten entfernt' : 'Removed from Favourites')); },
+  playEp(arg) {
+    const [id, sn, e, mode] = arg.split('|'), s = SERIES.find(x => x.id === id);
+    const ttl = EP_TITLES[(+e - 1 + +sn * 3) % EP_TITLES.length], dur = (42 + (+e % 4) * 3) * 60;
+    const resume = s.last && +sn === s.last.s && +e === s.last.e && mode !== 'start';
+    back.push({ tab: S.tab, view: S.view || { kind: 'series', id }, focus: null });
+    S.view = S.view || { kind: 'series', id }; // leaving playback lands on the series (a contextual screen)
+    startVod({ kind: 'ep', id, sn: +sn, e: +e, h: s.h + +e * 9, title: s.title, sub: `${t('season')} ${sn}, ${t('ep')} ${e}: ${ttl}`, dur, pos: resume ? dur * s.last.pct : 0 });
+  },
+  playMovie(id) {
+    const m = MOVIES.find(x => x.id === id);
+    back.push({ tab: S.tab, view: S.view || { kind: 'movie', id }, focus: null });
+    S.view = S.view || { kind: 'movie', id };
+    startVod({ kind: 'movie', id, h: m.h, title: m.title, sub: `${m.year} · ${L(m.genre)}`, dur: m.mins * 60, pos: (m.pct || 0) * m.mins * 60 });
+  },
+  playLive(n) {
+    if (S.player && S.player.kind === 'live') { tune(+n); return; }
+    back.push({ tab: S.tab, view: S.view, focus: cur && selectorFor(cur) });
+    S.chan = +n; S.player = { kind: 'live', n: +n }; show();
+  },
+  nextEp() { const p = S.player; ACT.playEp(`${p.id}|${p.sn}|${Math.min(p.e + 1, 12)}|start`); back.pop(); },
+  toggle() { playing = !playing; flash(playing ? I.play : I.pause); armOsd(); },
+  type(k) { query = k === 'del' ? query.slice(0, -1) : k === 'space' ? query + ' ' : query + k; show({ keep: `.key[data-arg="${k}"]` }); },
+  lang() { lang = lang === 'en' ? 'de' : 'en'; show({ keep: '[data-act="lang"]' }); },
+  noop() { armOsd(); },
+};
+
+function activate() {
+  if (!cur) return;
+  const el = cur; el.classList.add('pressed'); setTimeout(() => el.classList.remove('pressed'), 110);
+  const fn = ACT[el.dataset.act]; if (fn) setTimeout(() => fn(el.dataset.arg), 90);
+}
+function goBack() {
+  if (S.player) {
+    const o = $('#osd'), strip = $('#strip');
+    if (strip && !strip.classList.contains('hide')) { strip.classList.add('hide'); return; }
+    if (o && !o.classList.contains('hide')) { o.classList.add('hide'); return; }
+    clearInterval(vodTick);
+    S.player = null; const b = back.pop() || {}; S.tab = b.tab || S.tab; S.view = b.view || null; show({ keep: b.focus }); return;
+  }
+  if (S.view) { const b = back.pop() || {}; S.view = b.view || null; S.tab = b.tab || S.tab; show({ keep: b.focus }); return; }
+  // Back on a tab: first to the tab bar, then out of the app.
+  if (!cur || !cur.closest('#tabbar')) { setFocus(stage.querySelector('.tab.sel'), 'up'); reveal(stage.querySelector('.tab.sel')); const sc = $('.scroller', screenEl); if (sc) { sc.style.transform = ''; tabbar.classList.remove('away'); } return; }
+  toast(t('exit'));
+}
+let toastT;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2400); }
+
+function key(k) {
+  const live = S.player && S.player.kind === 'live';
+  const vod = S.player && !live;
+  if (k === 'Escape' || k === 'Backspace') return goBack();
+  if (k === 'g' || k === 'G') { if (S.player) { clearInterval(vodTick); S.player = null; } S.view = null; S.tab = 'guide'; back.length = 0; return show(); }
+  if (live) {
+    const strip = $('#strip'), stripOpen = strip && !strip.classList.contains('hide');
+    if (k === 'PageUp' || (!stripOpen && k === 'ArrowUp')) return zap(-1);
+    if (k === 'PageDown' || (!stripOpen && k === 'ArrowDown')) return zap(1);
+    // OK (or left/right) brings up the channel strip over the picture; up puts it away again.
+    if (!stripOpen && (k === 'Enter' || k === 'ArrowLeft' || k === 'ArrowRight')) return openStrip(S.player.n);
+    if (stripOpen && k === 'ArrowUp') { strip.classList.add('hide'); cur && cur.classList.remove('focus'); cur = null; return; }
+    if (stripOpen) armOsd();
+    if (k === 'p' || k === ' ') { playing = !playing; return flash(playing ? I.play : I.pause); }
+  }
+  if (vod) {
+    const o = $('#osd');
+    if (k === 'p' || k === ' ') { ACT.toggle(); return; }
+    if (o.classList.contains('hide')) { armOsd(); if (k === 'Enter') return; }
+    else armOsd();
+    if (cur && cur.id === 'scrub' && (k === 'ArrowLeft' || k === 'ArrowRight')) {
+      S.player.pos = Math.max(0, Math.min(S.player.dur, S.player.pos + (k === 'ArrowLeft' ? -10 : 10))); updScrub(); return;
+    }
+  }
+  if (k === 'ArrowLeft') move('left');
+  else if (k === 'ArrowRight') move('right');
+  else if (k === 'ArrowUp') move('up');
+  else if (k === 'ArrowDown') move('down');
+  else if (k === 'Enter') activate();
+}
+document.addEventListener('keydown', (e) => {
+  const map = { ' ': ' ' };
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Backspace', 'PageUp', 'PageDown', ' ', 'p', 'P', 'g', 'G'].includes(e.key)) {
+    if (e.target.closest && e.target.closest('.remote')) { if (e.key === 'Enter' || e.key === ' ') return; }
+    e.preventDefault(); key(e.key === 'P' ? 'p' : e.key);
+  }
+});
+document.querySelectorAll('.remote button').forEach(b => b.addEventListener('click', () => key(b.dataset.k)));
+// Clicking the screen moves focus there and selects (handy with a mouse or on a phone).
+stage.addEventListener('click', (e) => { const f = e.target.closest('.f'); if (f && focusables().includes(f)) { setFocus(f); activate(); } });
+
+/* ================= Fit the 1920 x 1080 canvas ================= */
+const vp = $('#viewport');
+function fit() {
+  const s = Math.min(vp.clientWidth / 1920, vp.clientHeight / 1080);
+  stage.style.transform = `scale(${s})`;
+  stage.style.left = (vp.clientWidth - 1920 * s) / 2 + 'px';
+  stage.style.top = (vp.clientHeight - 1080 * s) / 2 + 'px';
+}
+new ResizeObserver(fit).observe(vp); fit();
+show();
+})();
+</script>

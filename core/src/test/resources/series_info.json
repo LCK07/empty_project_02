@@ -1,0 +1,8 @@
+{"seasons":[{"season_number":1,"name":"Season 1"},{"season_number":2,"name":"Season 2"}],
+ "info":{"name":"Northbound","plot":"A ferry captain returns.","genre":"Drama","backdrop_path":["http://img/1.jpg"]},
+ "episodes":{
+  "1":[{"id":"1001","episode_num":"1","title":"Northbound - S01E01 - Arrival","container_extension":"mkv","info":{"duration_secs":"2700","plot":"She comes back.","movie_image":"http://img/e1.jpg"},"season":1},
+       {"id":"1002","episode_num":2,"title":"Northbound - S01E02","container_extension":"mkv","info":{"duration_secs":2760},"season":"1"}],
+  "2":[{"id":"2001","episode_num":1,"title":"S02E01 Low Water","container_extension":"mp4","info":[],"season":2},
+       {"id":"2002","episode_num":"2","title":"Tide Line","container_extension":"mp4","info":{"duration_secs":null},"season":2}]
+ }}
