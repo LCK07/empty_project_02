@@ -5,7 +5,7 @@
 -keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
 -keep,includedescriptorclasses class com.lck07.lumen.**$$serializer { *; }
 -keepclassmembers class com.lck07.lumen.** { *** Companion; }
--keepclasswithmembers class com.lck07.lumen.** { kotlinx.serialization.KSerializer serializer(...); }
+-keepclasseswithmembers class com.lck07.lumen.** { kotlinx.serialization.KSerializer serializer(...); }
 
 # The FFmpeg extension is loaded by reflection from Media3.
 -keep class io.github.anilbeesetti.nextlib.media3ext.** { *; }
