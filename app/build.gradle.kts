@@ -49,6 +49,8 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            // The Android TV 11 emulator image is 32-bit x86.
+            ndk { abiFilters += "x86" }
         }
         release {
             isMinifyEnabled = true
