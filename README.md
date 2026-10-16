@@ -13,6 +13,21 @@ Lumen ships with no content, playlists or provider of its own.
 - Dark, focus-driven design built with Compose for TV and Media3. No analytics; the login stays
   in encrypted storage on the device.
 
+## Screenshots
+
+Taken on the Android TV emulator against the fake test server in `tools/testserver`.
+
+| | |
+|---|---|
+| ![Home](docs/screenshots/home.png) | ![Series detail](docs/screenshots/series-detail.png) |
+| Home | Series detail |
+| ![Player](docs/screenshots/player.png) | ![Live TV](docs/screenshots/live-tv.png) |
+| Player | Live TV |
+| ![Guide](docs/screenshots/guide.png) | ![Search](docs/screenshots/search.png) |
+| Guide | Search |
+| ![Settings](docs/screenshots/settings.png) | |
+| Settings | |
+
 ## Build
 
 Requirements: JDK 21 and the Android SDK (platform 37). Then:
