@@ -2,6 +2,7 @@ package com.lck07.lumen.design
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -237,4 +238,31 @@ fun MessageState(
 @Composable
 fun ButtonRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     Row(modifier.heightIn(min = LumenSizes.ButtonHeight), horizontalArrangement = Arrangement.spacedBy(LumenSpacing.ButtonGap), verticalAlignment = Alignment.CenterVertically, content = content)
+}
+
+/** The activity indicator: eight ticks fading round, as on Apple platforms. */
+@Composable
+fun Spinner(modifier: Modifier = Modifier, size: Dp = 28.dp, color: Color = LumenColors.Label) {
+    val reduce = LocalReduceMotion.current
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "spinner")
+    val phase by t.animateFloat(
+        0f, 8f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(800, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "phase",
+    )
+    androidx.compose.foundation.Canvas(modifier.size(size)) {
+        val step = if (reduce) 0 else phase.toInt()
+        val w = this.size.minDimension
+        for (i in 0 until 8) {
+            val a = Math.toRadians((i * 45.0) - 90)
+            val alpha = 0.25f + 0.75f * (((i - step + 8) % 8) / 7f)
+            val inner = w * 0.22f; val outer = w * 0.46f
+            drawLine(
+                color.copy(alpha = alpha),
+                androidx.compose.ui.geometry.Offset(center.x + inner * kotlin.math.cos(a).toFloat(), center.y + inner * kotlin.math.sin(a).toFloat()),
+                androidx.compose.ui.geometry.Offset(center.x + outer * kotlin.math.cos(a).toFloat(), center.y + outer * kotlin.math.sin(a).toFloat()),
+                strokeWidth = w * 0.09f, cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
+        }
+    }
 }

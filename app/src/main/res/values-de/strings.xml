@@ -180,4 +180,7 @@
     <string name="removed_from_favourites">Aus Favoriten entfernt</string>
     <string name="exit_hint">Drücke noch einmal Zurück, um Lumen zu verlassen</string>
     <string name="loading">Wird geladen</string>
+    <string name="phone_send">An den Fernseher senden</string>
+    <string name="phone_sent">Gesendet. Schau auf deinen Fernseher.</string>
+    <string name="playback_error_title">Wiedergabe nicht möglich</string>
 </resources>

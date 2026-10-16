@@ -8,6 +8,8 @@ sealed interface Target {
     data class MovieDetail(val movieId: Int) : Target
     /** Play an episode; [startOver] ignores the saved position. */
     data class PlayEpisode(val seriesId: Int, val episodeId: String, val startOver: Boolean = false) : Target
+    /** Play a series from its first episode (a series nobody has watched yet). */
+    data class PlaySeries(val seriesId: Int) : Target
     data class PlayMovie(val movieId: Int, val startOver: Boolean = false) : Target
     data class PlayChannel(val channelId: Int) : Target
 }

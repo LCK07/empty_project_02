@@ -194,4 +194,7 @@
     <string name="removed_from_favourites">Removed from Favourites</string>
     <string name="exit_hint">Press Back again to leave Lumen</string>
     <string name="loading">Loading</string>
+    <string name="phone_send">Send to TV</string>
+    <string name="phone_sent">Sent. Look at your TV.</string>
+    <string name="playback_error_title">Can’t Play This</string>
 </resources>

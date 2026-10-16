@@ -51,6 +51,12 @@ sealed interface VodRequest {
         override val key = "episode:$seriesId:$episodeId"
     }
 
+    /** The first episode of a series. */
+    data class SeriesStart(val seriesId: Int) : VodRequest {
+        override val key = "series-start:$seriesId"
+        override val startOver = true
+    }
+
     data class Movie(val movieId: Int, override val startOver: Boolean = false) : VodRequest {
         override val key = "movie:$movieId"
     }
