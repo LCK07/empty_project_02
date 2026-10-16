@@ -33,4 +33,4 @@ rootProject.name = "Lumen"
 include(":core")
 // The Android app needs the Android SDK. Build only the core with CORE_ONLY=1
 // (for example where Google's download hosts are not reachable).
-if (System.getenv("CORE_ONLY") == null) include(":app")
+if (System.getenv("CORE_ONLY") == null) include(":app", ":baselineprofile")
