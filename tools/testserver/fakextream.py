@@ -104,8 +104,6 @@ def image(kind, key):
     elif kind == "logo":
         img = Image.new("RGBA", size, (0, 0, 0, 0)); d = ImageDraw.Draw(img)
         d.text((4, 10), CHANNELS[int(key[1:]) - 5000][:10], font=ImageFont.truetype(FONT, 30), fill="white")
-    elif kind == "still":
-        d.text((16, ht - 50), key, font=ImageFont.truetype(FONT, 22), fill="white")
     buf = io.BytesIO(); img.save(buf, "PNG" if kind == "logo" else "JPEG", quality=80)
     _img[k] = buf.getvalue(); return _img[k]
 
