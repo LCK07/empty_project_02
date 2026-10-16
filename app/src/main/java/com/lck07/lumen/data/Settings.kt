@@ -97,6 +97,9 @@ class SettingsStore(private val context: Context) {
         it[K.lastScreenAt] = at
     }
 
+    /** When the app went to the background, so a relaunch soon after returns to the same screen. */
+    suspend fun touchLastScreen(at: Long) = context.store.edit { it[K.lastScreenAt] = at }
+
     suspend fun setPin(pin: String?) = context.store.edit {
         if (pin == null) { it.remove(K.pinHash); it.remove(K.locked) } else it[K.pinHash] = hashPin(pin)
     }

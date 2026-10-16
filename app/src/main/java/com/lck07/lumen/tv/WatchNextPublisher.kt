@@ -47,6 +47,7 @@ class WatchNextPublisher(private val context: Context, private val db: LumenData
                 val id = p.watchNextId
                 if (id != null && helper.getWatchNextProgram(id) != null) helper.updateWatchNextProgram(program, id)
                 else db.library().setWatchNextId(p.key, helper.publishWatchNextProgram(program))
+                if (com.lck07.lumen.BuildConfig.DEBUG) Log.i(TAG, "published ${p.key}")
             } catch (e: Exception) {
                 Log.w(TAG, "Watch Next update failed: ${e.javaClass.simpleName}")
             }

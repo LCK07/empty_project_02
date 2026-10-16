@@ -19,6 +19,10 @@ class LumenApp : Application(), SingletonImageLoader.Factory, Configuration.Prov
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // The parental lock closes again whenever the app goes to the background.
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStop(owner: androidx.lifecycle.LifecycleOwner) { container.parental.lock() }
+        })
     }
 
     /**

@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -21,6 +23,7 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import com.lck07.lumen.R
+import kotlinx.coroutines.launch
 import com.lck07.lumen.design.LumenColors
 import com.lck07.lumen.design.LumenIcons
 import com.lck07.lumen.design.TabBar
@@ -53,16 +56,25 @@ fun LumenRoot(
     val toaster = remember { Toaster() }
     val chrome = remember { TabChrome() }
     val holder = rememberSaveableStateHolder()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     BackHandler {
         when {
             navigator.pop() -> Unit
             !chrome.tabBarFocused -> {
+                // The bar only takes focus while it is shown, so show it first and focus it a frame later.
+                chrome.contentAtTop = true
                 chrome.scrollToTop++
-                runCatching { chrome.tabRequester.requestFocus() }
+                scope.launch { withFrameNanos { }; runCatching { chrome.tabRequester.requestFocus() } }
             }
             else -> onExit()
         }
+    }
+
+    // Tabs without a primary button of their own start with focus on the tab bar.
+    LaunchedEffect(Unit) {
+        withFrameNanos { }; withFrameNanos { }
+        if (navigator.tab != TopTab.Home && navigator.stack.isEmpty()) runCatching { chrome.tabRequester.requestFocus() }
     }
 
     CompositionLocalProvider(LocalToaster provides toaster) {

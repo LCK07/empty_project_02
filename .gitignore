@@ -10,3 +10,4 @@ keystore.properties
 *.jks
 *.keystore
 /dist/
+/tools/testserver/media/

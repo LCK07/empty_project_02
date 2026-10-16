@@ -345,6 +345,8 @@ private fun TransportOverlay(
     enabled: Boolean,
 ) {
     LaunchedEffect(enabled) { if (enabled) { awaitFrame(); runCatching { scrubber.requestFocus() } } }
+    // Down from the full-width scrubber goes to the first button, not the one nearest its centre.
+    val firstButton = remember { FocusRequester() }
     Box(
         Modifier
             .fillMaxSize()
@@ -364,7 +366,7 @@ private fun TransportOverlay(
             Scrubber(
                 position = pos, duration = ps.duration, buffered = ps.bufferedFraction, playing = ps.playWhenReady,
                 requester = scrubber, onToggle = onToggle, onSeek = onSeek,
-                modifier = Modifier.padding(top = 17.dp),
+                modifier = Modifier.padding(top = 17.dp).focusProperties { down = firstButton },
             )
             Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Txt(clock(pos), LumenType.Caption2Strong.tabular(), color = LumenColors.Label2)
@@ -373,7 +375,7 @@ private fun TransportOverlay(
             ButtonRow(Modifier.padding(top = 15.dp)) {
                 LumenButton(
                     subtitleValue?.let { stringResource(R.string.subtitles_value, it) } ?: stringResource(R.string.subtitles),
-                    onSubtitles, icon = LumenIcons.Subtitles, small = true, modifier = Modifier.testTag("osd:subtitles"),
+                    onSubtitles, icon = LumenIcons.Subtitles, small = true, modifier = Modifier.focusRequester(firstButton).testTag("osd:subtitles"),
                 )
                 LumenButton(
                     audioValue?.let { stringResource(R.string.audio_value, it) } ?: stringResource(R.string.audio),

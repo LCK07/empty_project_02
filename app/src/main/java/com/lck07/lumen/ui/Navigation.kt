@@ -74,6 +74,9 @@ class Navigator(initialTab: TopTab = TopTab.Home) {
     val stack = mutableStateListOf<Screen>()
     val top: Screen? get() = stack.lastOrNull()
 
+    /** Something to open as soon as the tabs show (a Watch Next item tapped on the home screen). */
+    var pending by mutableStateOf<com.lck07.lumen.ui.model.Target?>(null)
+
     /** Focus target for content under the tab bar (moving down from the tab bar lands here). */
     val contentRequester = FocusRequester()
 

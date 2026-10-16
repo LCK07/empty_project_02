@@ -3,10 +3,13 @@ package com.lck07.lumen.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
@@ -25,6 +28,9 @@ import com.lck07.lumen.design.LumenIcons
 import com.lck07.lumen.design.MessageState
 import com.lck07.lumen.player.VodPlayerScreen
 import com.lck07.lumen.ui.live.LivePlayerScreen
+import com.lck07.lumen.ui.guide.GuideScreen
+import com.lck07.lumen.ui.search.SearchScreen
+import com.lck07.lumen.ui.settings.SettingsScreen
 import com.lck07.lumen.ui.live.LiveTab
 import com.lck07.lumen.ui.browse.MoviesTab
 import com.lck07.lumen.ui.browse.SeriesTab
@@ -68,6 +74,8 @@ fun AppShell(navigator: Navigator, onExit: () -> Unit) {
                 )
             } else {
                 LaunchedEffect(a.account) { c.session.refreshInBackground() }
+                // Relaunched soon after leaving: back to the same tab and detail screen.
+                remember { restoreLastScreen(navigator, s); true }
                 MainTabs(navigator, onExit)
             }
         }
@@ -93,13 +101,31 @@ fun Navigator.open(t: Target) {
     }
 }
 
+/** How long after leaving the app a relaunch returns to the same screen instead of Home. */
+private const val RESTORE_WINDOW_MS = 30 * 60_000L
+
+private fun restoreLastScreen(navigator: Navigator, s: com.lck07.lumen.data.Settings) {
+    if (navigator.pending != null || System.currentTimeMillis() - s.lastScreenAt > RESTORE_WINDOW_MS) return
+    val tab = TopTab.of(s.lastTab) ?: return
+    navigator.selectTab(tab)
+    s.lastScreen?.let(Screen::decode)?.let(navigator::push)
+}
+
 @Composable
 private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
     val context = LocalContext.current
     val c = context.container
+    // Remember where the owner is, for a relaunch.
+    LaunchedEffect(navigator) {
+        androidx.compose.runtime.snapshotFlow { navigator.tab to navigator.stack.lastOrNull { Screen.restorable(it) } }
+            .collect { (tab, screen) -> c.settings.setLastScreen(tab.key, screen?.let(Screen::encode), System.currentTimeMillis()) }
+    }
+    // A Watch Next item chosen on the home screen.
+    LaunchedEffect(navigator.pending) { navigator.pending?.let { t -> navigator.pending = null; navigator.selectTab(TopTab.Home); navigator.open(t) } }
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val onOpen: (Target) -> Unit = { navigator.open(it) }
+    Box(Modifier.fillMaxSize()) {
     LumenRoot(
         navigator = navigator,
         onExit = onExit,
@@ -129,8 +155,10 @@ private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
                 }
                 TopTab.Series -> SeriesTab(chrome, onOpen)
                 TopTab.Movies -> MoviesTab(chrome, onOpen)
+                TopTab.Guide -> GuideScreen(chrome, onWatch = { navigator.push(Screen.Live(it)) })
                 TopTab.Live -> LiveTab(chrome, onWatch = { navigator.push(Screen.Live(it)) }, onGuide = { navigator.selectTab(TopTab.Guide) })
-                else -> ComingSoon(tab)
+                TopTab.Search -> SearchScreen(chrome, onOpen)
+                TopTab.Settings -> SettingsScreen(chrome)
             }
         },
         screenContent = { screen ->
@@ -142,12 +170,36 @@ private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
             }
         },
     )
+    StatusBanner(Modifier.align(Alignment.BottomCenter))
+    }
 }
 
-/** Placeholder for parts that arrive in later milestones. */
+/**
+ * In-app notices instead of alerts: offline (the saved library still works) and an ended
+ * subscription. Each shows for a few seconds when it starts.
+ */
 @Composable
-private fun ComingSoon(tab: TopTab?) {
-    Box(Modifier.fillMaxSize().background(LumenColors.Background), contentAlignment = Alignment.Center) {
-        MessageState(tab?.name ?: stringResource(R.string.loading), null, icon = LumenIcons.Warning)
+private fun StatusBanner(modifier: Modifier = Modifier) {
+    val c = LocalContext.current.container
+    val online by c.network.online.collectAsState()
+    val info by c.account.info.collectAsState(initial = null)
+    val expired = info?.expired() == true
+    val message = when {
+        !online -> stringResource(R.string.offline_banner)
+        expired -> stringResource(R.string.expired_banner)
+        else -> null
+    }
+    var shown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    LaunchedEffect(message) { shown = message; if (message != null) { kotlinx.coroutines.delay(8_000); shown = null } }
+    val m = shown ?: return
+    com.lck07.lumen.design.Glass(com.lck07.lumen.design.LumenRadii.Capsule, modifier.padding(bottom = 24.dp), strong = true) {
+        androidx.compose.foundation.layout.Row(
+            Modifier.padding(horizontal = 17.dp, vertical = 10.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.lck07.lumen.design.Icon(if (!online) LumenIcons.Wifi else LumenIcons.Warning, tint = com.lck07.lumen.design.LumenColors.Label2, size = 13.dp)
+            com.lck07.lumen.design.Txt(m, com.lck07.lumen.design.LumenType.Caption1Strong)
+        }
     }
 }
