@@ -105,7 +105,7 @@ fun LumenButton(
             .controlFocusEffect(state, shape)
             .background(bg, shape)
             .tvClickable(state, enabled, label = if (text == null) label else null, selected = selected, onKey = onKey, onClick = onClick)
-            .height(height)
+            .then(if (text == null) Modifier.height(height) else Modifier.heightIn(min = height))
             .then(if (text == null) Modifier.width(height) else Modifier.padding(horizontal = if (small) 13.dp else 19.dp)),
         horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,

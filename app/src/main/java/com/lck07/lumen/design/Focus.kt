@@ -144,7 +144,7 @@ fun Modifier.tvClickable(
                 onKey(e.key)
             } else false
         }
-        .semantics {
+        .semantics(mergeDescendants = true) {
             this.role = role
             if (selected != null) this.selected = selected
             onClick(label = label) { if (enabled) onClick(); enabled }

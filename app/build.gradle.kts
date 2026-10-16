@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 // Release signing comes from environment variables (CI secrets) or keystore.properties.
@@ -91,6 +92,7 @@ ksp {
 
 dependencies {
     implementation(project(":core"))
+    baselineProfile(project(":baselineprofile"))
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
