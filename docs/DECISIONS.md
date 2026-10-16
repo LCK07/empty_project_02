@@ -43,3 +43,21 @@ Apple TV feel. Each decision is recorded here.
 - **Live preview.** The Live TV hero plays the last channel muted after a short pause while it is
   on screen. It shares the one player, so it stops before anything else plays (one connection).
 - **Live reconnects.** A live stream that fails reconnects up to three times before an error shows.
+
+## Polish (milestone 8)
+
+- **Baseline Profile.** The `baselineprofile` module drives a scripted TV session against the fake
+  server. Generating the profile needs an emulator or TV (`./gradlew :app:generateReleaseBaselineProfile`
+  with `tools/testserver` running); see the release notes for whether the generated file is committed.
+- **Accessibility.** Every `tvClickable` element now merges its descendants into one TalkBack node;
+  icon-only controls (round buttons, icon tabs, PIN delete, search keys) carry an explicit label;
+  decorative icons next to text have no description; the LIVE badge always has text. Buttons and tabs
+  use a minimum height instead of a fixed one, so they grow with the system font scale. This was done
+  by code review; font scale 1.3 was not checked on a device.
+- **German copy** was compared key by key with the English file (no missing keys; `app_name` and the
+  language names are intentionally untranslated). Du-form throughout. Truncation on screen was not checked.
+- **Performance review.** Rows and grids are lazy; category/search/recent queries are `LIMIT`ed;
+  Coil sizes each request from the layout (tiles decode at tile size), uses RGB_565 where possible,
+  a 15 % memory cache and a 250 MB disk cache. The one unpaged read is the full channel list used when the
+  live player cannot resolve its category list. **No real Fire TV was available:** cold start, 60 fps
+  focus movement and channel-change timings are unverified on device.

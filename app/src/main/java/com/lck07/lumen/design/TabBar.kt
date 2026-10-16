@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -91,7 +92,7 @@ fun <T> TabBar(
                                 },
                             ) { onSelect(tab.key) }
                             .testTag("tab:${tab.key}")
-                            .height(LumenSizes.TabHeight)
+                            .heightIn(min = LumenSizes.TabHeight)
                             .padding(horizontal = if (tab.icon != null) 9.dp else 15.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
