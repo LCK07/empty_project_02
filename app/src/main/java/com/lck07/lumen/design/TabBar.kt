@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,13 +61,11 @@ fun <T> TabBar(
         Glass(LumenRadii.Capsule, Modifier.testTag("tabbar")) {
             Row(
                 Modifier
+                    .focusRestorer(selectedRequester)
                     .focusProperties {
                         canFocus = visible
-                        // Entering the bar always lands on the selected tab, as on tvOS.
-                        onEnter = { selectedRequester.requestFocus() }
                         if (contentRequester != null) down = contentRequester
                     }
-                    .focusGroup()
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,

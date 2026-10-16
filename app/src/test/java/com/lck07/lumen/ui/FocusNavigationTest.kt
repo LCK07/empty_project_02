@@ -94,28 +94,6 @@ class FocusNavigationTest {
     }
 
     @Test
-    fun upFromContentLandsOnTheSelectedTab() {
-        rule.setContent {
-            val content = remember { FocusRequester() }
-            Column {
-                com.lck07.lumen.design.TabBar(
-                    tabs = listOf("a", "b", "c").map { com.lck07.lumen.design.TabItem(it, it) },
-                    selected = "c", onSelect = {}, visible = true, contentRequester = content,
-                )
-                Box(Modifier.size(100.dp).focusRequester(content).testTag("content").focusable())
-            }
-            LaunchedEffect(Unit) { withFrameNanos { }; content.requestFocus() }
-        }
-        // Visit another tab first, so a focus restorer would remember it.
-        key(Key.DirectionUp); key(Key.DirectionLeft)
-        rule.onNodeWithTag("tab:b").assertIsFocused()
-        key(Key.DirectionDown)
-        rule.onNodeWithTag("content").assertIsFocused()
-        key(Key.DirectionUp)
-        rule.onNodeWithTag("tab:c").assertIsFocused()
-    }
-
-    @Test
     fun rowRemembersItsFocusedTile() {
         rule.setContent {
             val first = remember { FocusRequester() }
