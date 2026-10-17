@@ -93,7 +93,8 @@ private val SelectKeys = setOf(
     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER,
     AndroidKeyEvent.KEYCODE_NUMPAD_ENTER, AndroidKeyEvent.KEYCODE_BUTTON_A,
 )
-private const val LONG_PRESS_MS = 550L
+/** How long Select is held before it counts as a long press. */
+const val LONG_PRESS_MS = 550L
 
 /**
  * Makes an element focusable and activatable with the remote: Select presses (the element
@@ -126,7 +127,7 @@ fun Modifier.tvClickable(
                         val repeat = e.nativeKeyEvent.repeatCount
                         if (repeat == 0) {
                             downAt = SystemClock.uptimeMillis(); longFired = false; state.pressed = true
-                        } else if (onLongClick != null && !longFired && SystemClock.uptimeMillis() - downAt >= LONG_PRESS_MS) {
+                        } else if (onLongClick != null && !longFired && (e.nativeKeyEvent.isLongPress || SystemClock.uptimeMillis() - downAt >= LONG_PRESS_MS)) {
                             longFired = true; state.pressed = false; onLongClick()
                         }
                         true

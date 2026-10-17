@@ -104,6 +104,15 @@ fun rememberFavouriteToggle(): (Int) -> Unit {
 fun channelTiles(c: AppContainer, channels: Flow<List<ChannelEntity>>): Flow<List<ChannelItem>> =
     combine(channels, c.guide.onNow, c.library.favourites(FavouriteKind.Channel)) { ch, now, fav -> channelItems(ch, now, fav.toSet()) }
 
+/** The active profile's favourite channels as tiles, in the order they were added. */
+@OptIn(ExperimentalCoroutinesApi::class)
+fun favouriteChannelTiles(c: AppContainer): Flow<List<ChannelItem>> =
+    c.library.favourites(FavouriteKind.Channel).flatMapLatest { ids ->
+        val intIds = ids.mapNotNull { it.toIntOrNull() }
+        if (intIds.isEmpty()) flowOf(emptyList())
+        else combine(channelTiles(c, c.db.catalog().channelsById(intIds)), flowOf(intIds)) { items, order -> items.sortedBy { order.indexOf(it.id) } }
+    }
+
 /**
  * Live TV: a hero with the last channel (a quiet live preview plays behind it) and Watch Live
  * and Guide buttons; then Favourites and a row per category.
@@ -117,13 +126,8 @@ fun LiveTab(chrome: TabChrome, onWatch: (Int) -> Unit, onGuide: () -> Unit, list
     val count by remember { dao.channelCount() }.collectAsState(initial = -1)
     val categories by remember { visibleCategories(c, CatalogRepository.TYPE_LIVE) }.collectAsState(initial = null)
     val settings by c.settings.settings.collectAsState(initial = null)
-    val favourites by remember {
-        c.library.favourites(FavouriteKind.Channel).flatMapLatest { ids ->
-            val intIds = ids.mapNotNull { it.toIntOrNull() }
-            if (intIds.isEmpty()) flowOf(emptyList())
-            else channelTiles(c, dao.channelsById(intIds)).let { f -> combine(f, flowOf(intIds)) { items, order -> items.sortedBy { order.indexOf(it.id) } } }
-        }
-    }.collectAsState(initial = emptyList())
+    val favourites by remember { favouriteChannelTiles(c) }.collectAsState(initial = emptyList())
+    val favouriteIds by remember { c.library.favourites(FavouriteKind.Channel) }.collectAsState(initial = emptyList())
 
     if (count == 0) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -152,7 +156,9 @@ fun LiveTab(chrome: TabChrome, onWatch: (Int) -> Unit, onGuide: () -> Unit, list
         ) {
             item(key = "hero") {
                 val ch = heroChannel
-                if (ch != null) LiveHero(ch, previewing = atTop, onWatch = { onWatch(ch.id) }, onGuide = onGuide, modifier = Modifier.revealOnFocus(list, 0, 0.dp))
+                if (ch != null) LiveHero(
+                    ch, previewing = atTop, favourite = favouriteIds.contains(ch.id.toString()),
+                    onWatch = { onWatch(ch.id) }, onGuide = onGuide, onFavourite = { toggleFavourite(ch.id) }, modifier = Modifier.revealOnFocus(list, 0, 0.dp))
                 else Box(Modifier.fillMaxWidth().height(110.dp))
             }
             if (favourites.isNotEmpty()) item(key = "fav") {
@@ -181,7 +187,10 @@ fun LiveTab(chrome: TabChrome, onWatch: (Int) -> Unit, onGuide: () -> Unit, list
 private val HeroOverlap = 115.dp
 
 @Composable
-private fun LiveHero(channel: ChannelEntity, previewing: Boolean, onWatch: () -> Unit, onGuide: () -> Unit, modifier: Modifier = Modifier) {
+private fun LiveHero(
+    channel: ChannelEntity, previewing: Boolean, favourite: Boolean,
+    onWatch: () -> Unit, onGuide: () -> Unit, onFavourite: () -> Unit, modifier: Modifier = Modifier,
+) {
     val c = LocalContext.current.container
     val active = LocalScreenActive.current
     val nn by produceState(NowNext(null, null), channel.id) {
@@ -231,6 +240,11 @@ private fun LiveHero(channel: ChannelEntity, previewing: Boolean, onWatch: () ->
             ButtonRow(Modifier.padding(top = 7.dp)) {
                 LumenButton(stringResource(R.string.action_watch_live), onWatch, icon = LumenIcons.Play, focusRequester = watch, modifier = Modifier.testTag("live:watch"))
                 LumenButton(stringResource(R.string.action_guide), onGuide, icon = LumenIcons.Guide)
+                LumenButton(
+                    null, onFavourite, icon = if (favourite) LumenIcons.HeartFilled else LumenIcons.Heart,
+                    label = stringResource(if (favourite) R.string.favourite_on else R.string.favourite_off), selected = favourite,
+                    modifier = Modifier.testTag("live:favourite"),
+                )
             }
         }
     }
