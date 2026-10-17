@@ -218,6 +218,16 @@
     <string name="profile_manage">Manage Profiles</string>
     <string name="profile_whos_watching">Who’s watching?</string>
     <string name="settings_profiles">Profiles</string>
+    <string name="content_languages">Content languages</string>
+    <string name="content_lang_all">All languages</string>
+    <string name="content_lang_de">German</string>
+    <string name="content_lang_en">English</string>
+    <string name="content_lang_de_en">German + English</string>
+    <string name="content_lang_hint">Titles without a language tag are always shown.</string>
+    <plurals name="untagged_titles">
+        <item quantity="one">%d title without a language tag</item>
+        <item quantity="other">%d titles without a language tag</item>
+    </plurals>
     <string name="profiles_hint">Profiles keep favourites and progress apart. They are not password-protected.</string>
     <string name="profile_add">Add Profile</string>
     <string name="profile_name">Name</string>

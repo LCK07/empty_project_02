@@ -204,6 +204,16 @@
     <string name="profile_manage">Profile verwalten</string>
     <string name="profile_whos_watching">Wer schaut?</string>
     <string name="settings_profiles">Profile</string>
+    <string name="content_languages">Inhaltssprachen</string>
+    <string name="content_lang_all">Alle Sprachen</string>
+    <string name="content_lang_de">Deutsch</string>
+    <string name="content_lang_en">Englisch</string>
+    <string name="content_lang_de_en">Deutsch + Englisch</string>
+    <string name="content_lang_hint">Titel ohne Sprachkennzeichnung werden immer angezeigt.</string>
+    <plurals name="untagged_titles">
+        <item quantity="one">%d Titel ohne Sprachkennzeichnung</item>
+        <item quantity="other">%d Titel ohne Sprachkennzeichnung</item>
+    </plurals>
     <string name="profiles_hint">Profile halten Favoriten und Fortschritt getrennt. Sie sind nicht passwortgeschützt.</string>
     <string name="profile_add">Profil hinzufügen</string>
     <string name="profile_name">Name</string>

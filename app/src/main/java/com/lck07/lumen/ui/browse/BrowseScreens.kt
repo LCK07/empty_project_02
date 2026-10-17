@@ -121,11 +121,11 @@ fun SeriesTab(chrome: TabChrome, onOpen: (Target) -> Unit) {
             }, onOpen, "row:mine")
         }
         item(key = "updated") {
-            PagedPosterRow(stringResource(R.string.row_recently_updated), 1, list, { limit -> dao.recentlyUpdatedSeries(limit).map { l -> l.map { it.poster(res) } } }, onOpen, "row:updated")
+            PagedPosterRow(stringResource(R.string.row_recently_updated), 1, list, { limit -> c.profiles.languageFilter.flatMapLatest { f -> dao.recentlyUpdatedSeries(limit, f.all, f.langs) }.map { l -> l.map { it.poster(res) } } }, onOpen, "row:updated")
         }
         cats.forEachIndexed { i, cat ->
             item(key = "cat:${cat.id}") {
-                PagedPosterRow(cat.name, i + 2, list, { limit -> dao.seriesIn(cat.id, limit).map { l -> l.map { it.poster(res) } } }, onOpen, "row:cat:${cat.id}")
+                PagedPosterRow(cat.name, i + 2, list, { limit -> c.profiles.languageFilter.flatMapLatest { f -> dao.seriesIn(cat.id, limit, f.all, f.langs) }.map { l -> l.map { it.poster(res) } } }, onOpen, "row:cat:${cat.id}")
             }
         }
     }
@@ -161,11 +161,11 @@ fun MoviesTab(chrome: TabChrome, onOpen: (Target) -> Unit) {
             }, onOpen, "row:mymovies")
         }
         item(key = "added") {
-            PagedPosterRow(stringResource(R.string.row_recently_added_movies), 2, list, { limit -> dao.recentMovies(limit).map { l -> l.map { it.poster(res) } } }, onOpen, "row:added")
+            PagedPosterRow(stringResource(R.string.row_recently_added_movies), 2, list, { limit -> c.profiles.languageFilter.flatMapLatest { f -> dao.recentMovies(limit, f.all, f.langs) }.map { l -> l.map { it.poster(res) } } }, onOpen, "row:added")
         }
         cats.forEachIndexed { i, cat ->
             item(key = "cat:${cat.id}") {
-                PagedPosterRow(cat.name, i + 3, list, { limit -> dao.moviesIn(cat.id, limit).map { l -> l.map { it.poster(res) } } }, onOpen, "row:cat:${cat.id}")
+                PagedPosterRow(cat.name, i + 3, list, { limit -> c.profiles.languageFilter.flatMapLatest { f -> dao.moviesIn(cat.id, limit, f.all, f.langs) }.map { l -> l.map { it.poster(res) } } }, onOpen, "row:cat:${cat.id}")
             }
         }
     }

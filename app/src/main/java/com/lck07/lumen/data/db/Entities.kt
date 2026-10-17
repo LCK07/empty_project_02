@@ -169,6 +169,9 @@ data class ProfileEntity(
     val createdAt: Long,
 )
 
+/** Just enough of a movie or series to compute its language tag. */
+data class TitleName(val id: Int, val name: String, val categoryId: String?)
+
 /** A programme joined with nothing else; used for now/next lookups. */
 data class NowRow(
     val channelKey: String,

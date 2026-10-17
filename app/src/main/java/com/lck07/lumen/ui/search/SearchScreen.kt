@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import com.lck07.lumen.R
 import com.lck07.lumen.container
 import com.lck07.lumen.data.CatalogRepository
+import com.lck07.lumen.data.LanguageFilter
 import com.lck07.lumen.data.SettingsStore
 import com.lck07.lumen.design.ChannelTile
 import com.lck07.lumen.design.Icon
@@ -118,9 +120,10 @@ fun SearchScreen(chrome: TabChrome, onOpen: (Target) -> Unit) {
     }
     fun startVoice() { if (voiceAvailable) runCatching { voice.launch(voiceIntent) } }
 
-    val results by produceState(SearchResults(), query) {
+    val filter by c.profiles.languageFilter.collectAsState(initial = LanguageFilter.of(""))
+    val results by produceState(SearchResults(), query, filter) {
         delay(150)
-        value = search(c, res, query)
+        value = search(c, res, query, filter)
     }
 
     LaunchedEffect(Unit) { chrome.contentAtTop = true }
@@ -232,7 +235,7 @@ data class SearchResults(
 }
 
 /** Searches the cached catalogue (names without accents, so "cafe" finds "Café"); locked categories stay hidden. */
-private suspend fun search(c: com.lck07.lumen.AppContainer, res: android.content.res.Resources, query: String): SearchResults {
+private suspend fun search(c: com.lck07.lumen.AppContainer, res: android.content.res.Resources, query: String, f: LanguageFilter): SearchResults {
     val dao = c.db.catalog()
     val q = CatalogRepository.searchKey(query)
     val s = c.settings.current()
@@ -241,15 +244,15 @@ private suspend fun search(c: com.lck07.lumen.AppContainer, res: android.content
     if (q.isBlank()) {
         return SearchResults(
             query,
-            series = dao.recentlyUpdatedSeries(LIMIT).first().filter { allowed(CatalogRepository.TYPE_SERIES, it.categoryId) }.map { it.poster(res) },
-            movies = dao.recentMovies(LIMIT).first().filter { allowed(CatalogRepository.TYPE_MOVIE, it.categoryId) }.map { it.poster(res) },
+            series = dao.recentlyUpdatedSeries(LIMIT, f.all, f.langs).first().filter { allowed(CatalogRepository.TYPE_SERIES, it.categoryId) }.map { it.poster(res) },
+            movies = dao.recentMovies(LIMIT, f.all, f.langs).first().filter { allowed(CatalogRepository.TYPE_MOVIE, it.categoryId) }.map { it.poster(res) },
         )
     }
     val onNow = c.guide.onNow.first()
     return SearchResults(
         query,
-        series = dao.searchSeries(q, LIMIT).filter { allowed(CatalogRepository.TYPE_SERIES, it.categoryId) }.map { it.poster(res) },
-        movies = dao.searchMovies(q, LIMIT).filter { allowed(CatalogRepository.TYPE_MOVIE, it.categoryId) }.map { it.poster(res) },
+        series = dao.searchSeries(q, LIMIT, f.all, f.langs).filter { allowed(CatalogRepository.TYPE_SERIES, it.categoryId) }.map { it.poster(res) },
+        movies = dao.searchMovies(q, LIMIT, f.all, f.langs).filter { allowed(CatalogRepository.TYPE_MOVIE, it.categoryId) }.map { it.poster(res) },
         channels = channelItems(dao.searchChannels(q, LIMIT).filter { allowed(CatalogRepository.TYPE_LIVE, it.categoryId) }, onNow, emptySet()),
     )
 }

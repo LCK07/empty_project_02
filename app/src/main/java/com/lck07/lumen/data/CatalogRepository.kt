@@ -1,5 +1,7 @@
 package com.lck07.lumen.data
 
+import androidx.room.withTransaction
+import com.lck07.lumen.core.LanguageTags
 import com.lck07.lumen.core.model.Episode
 import com.lck07.lumen.core.model.LiveChannel
 import com.lck07.lumen.core.model.Movie
@@ -49,10 +51,12 @@ class CatalogRepository(private val db: LumenDatabase) {
             val movie = client.movieCategories()
             val series = client.seriesCategories()
             dao.upsertCategories(
-                live.mapIndexed { i, c -> CategoryEntity(TYPE_LIVE, c.id, c.name, i, gen) } +
-                    movie.mapIndexed { i, c -> CategoryEntity(TYPE_MOVIE, c.id, c.name, i, gen) } +
-                    series.mapIndexed { i, c -> CategoryEntity(TYPE_SERIES, c.id, c.name, i, gen) },
+                live.mapIndexed { i, c -> CategoryEntity(TYPE_LIVE, c.id, c.name, i, gen, LanguageTags.fromText(c.name)) } +
+                    movie.mapIndexed { i, c -> CategoryEntity(TYPE_MOVIE, c.id, c.name, i, gen, LanguageTags.fromText(c.name)) } +
+                    series.mapIndexed { i, c -> CategoryEntity(TYPE_SERIES, c.id, c.name, i, gen, LanguageTags.fromText(c.name)) },
             )
+            val movieCats = movie.associate { it.id to it.name }
+            val seriesCats = series.associate { it.id to it.name }
 
             p = p.copy(step = ImportProgress.Step.Channels); onProgress(p)
             var position = 0
@@ -64,14 +68,14 @@ class CatalogRepository(private val db: LumenDatabase) {
             p = p.copy(step = ImportProgress.Step.Movies); onProgress(p)
             position = 0
             client.streamMovies { batch ->
-                dao.upsertMovies(batch.map { it.toEntity(position++, gen) })
+                dao.upsertMovies(batch.map { it.toEntity(position++, gen, LanguageTags.tag(it.categoryId?.let(movieCats::get), it.name)) })
                 p = p.copy(movies = position); onProgress(p)
             }
 
             p = p.copy(step = ImportProgress.Step.Series); onProgress(p)
             position = 0
             client.streamSeries { batch ->
-                dao.upsertSeries(batch.map { it.toEntity(position++, gen) })
+                dao.upsertSeries(batch.map { it.toEntity(position++, gen, LanguageTags.tag(it.categoryId?.let(seriesCats::get), it.name)) })
                 p = p.copy(series = position); onProgress(p)
             }
 
@@ -79,6 +83,29 @@ class CatalogRepository(private val db: LumenDatabase) {
             dao.pruneChannels(gen); dao.pruneMovies(gen); dao.pruneSeries(gen)
             p = p.copy(step = ImportProgress.Step.Done); onProgress(p)
             p
+        }
+    }
+
+    /** Tags categories, films and series imported before language tags existed. */
+    suspend fun tagLanguages() = withContext(Dispatchers.IO) {
+        val movieCats = HashMap<String, String>()
+        val seriesCats = HashMap<String, String>()
+        for ((type, names) in listOf(TYPE_LIVE to null, TYPE_MOVIE to movieCats, TYPE_SERIES to seriesCats)) {
+            val cats = dao.categoriesNow(type)
+            db.withTransaction { cats.forEach { dao.setCategoryLanguage(type, it.id, LanguageTags.fromText(it.name)) } }
+            names?.putAll(cats.associate { it.id to it.name })
+        }
+        var after = Int.MIN_VALUE
+        while (true) {
+            val batch = dao.movieNames(after, BATCH).ifEmpty { break }
+            db.withTransaction { batch.forEach { dao.setMovieLanguage(it.id, LanguageTags.tag(it.categoryId?.let(movieCats::get), it.name)) } }
+            after = batch.last().id
+        }
+        after = Int.MIN_VALUE
+        while (true) {
+            val batch = dao.seriesNames(after, BATCH).ifEmpty { break }
+            db.withTransaction { batch.forEach { dao.setSeriesLanguage(it.id, LanguageTags.tag(it.categoryId?.let(seriesCats::get), it.name)) } }
+            after = batch.last().id
         }
     }
 
@@ -117,6 +144,7 @@ class CatalogRepository(private val db: LumenDatabase) {
         const val TYPE_LIVE = "live"
         const val TYPE_MOVIE = "movie"
         const val TYPE_SERIES = "series"
+        private const val BATCH = 2000
 
         /** Lower case without accents, for search ("Café" matches "cafe"). */
         fun searchKey(s: String): String =
@@ -141,15 +169,15 @@ fun LiveChannel.toEntity(position: Int, gen: Int) = ChannelEntity(
 
 fun ChannelEntity.toModel() = LiveChannel(id, number, name, logo, epgId, categoryId, archiveDays)
 
-fun Movie.toEntity(position: Int, gen: Int) = MovieEntity(
-    id, name, CatalogRepository.searchKey(name), poster, rating, categoryId, added?.epochSecond, extension, position, gen,
+fun Movie.toEntity(position: Int, gen: Int, language: String? = null) = MovieEntity(
+    id, name, CatalogRepository.searchKey(name), poster, rating, categoryId, added?.epochSecond, extension, position, gen, language,
 )
 
 fun MovieEntity.toModel() = Movie(id, name, poster, rating, categoryId, added?.let(Instant::ofEpochSecond), extension)
 
-fun Series.toEntity(position: Int, gen: Int) = SeriesEntity(
+fun Series.toEntity(position: Int, gen: Int, language: String? = null) = SeriesEntity(
     id, name, CatalogRepository.searchKey(name), cover, plot, genre, releaseDate, rating, categoryId,
-    lastModified?.epochSecond, backdrops.firstOrNull(), position, gen,
+    lastModified?.epochSecond, backdrops.firstOrNull(), position, gen, language,
 )
 
 fun SeriesEntity.toModel() = Series(

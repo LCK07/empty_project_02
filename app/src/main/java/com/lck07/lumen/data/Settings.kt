@@ -61,7 +61,12 @@ class SettingsStore(private val context: Context) {
         val importedAt = longPreferencesKey("catalog_imported_at")
         val onboarded = booleanPreferencesKey("onboarded")
         val activeProfile = intPreferencesKey("active_profile")
+        val languagesTagged = booleanPreferencesKey("languages_tagged")
     }
+
+    /** Whether the one-off language tagging pass for pre-tag catalogue data has run. */
+    val languagesTagged: Flow<Boolean> = context.store.data.map { it[K.languagesTagged] ?: false }
+    suspend fun setLanguagesTagged() = context.store.edit { it[K.languagesTagged] = true }
 
     /** The stored active profile id (default 1); ProfileRepository falls back if it no longer exists. */
     val activeProfileId: Flow<Int> = context.store.data.map { it[K.activeProfile] ?: 1 }

@@ -18,6 +18,7 @@ import com.lck07.lumen.tv.WatchNextPublisher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -53,5 +54,9 @@ class AppContainer(val context: Context) {
     init {
         // Google TV's Watch Next row follows the active profile (also republishes at launch).
         scope.launch { profiles.activeId.collect { runCatching { watchNext.switchTo(it) } } }
+        // Titles imported before language tags existed get tagged once, in the background.
+        scope.launch {
+            if (!settings.languagesTagged.first()) runCatching { catalog.tagLanguages() }.onSuccess { settings.setLanguagesTagged() }
+        }
     }
 }

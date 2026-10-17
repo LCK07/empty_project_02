@@ -37,8 +37,11 @@ interface CatalogDao {
     @Query("SELECT COUNT(*) FROM channel") fun channelCount(): Flow<Int>
 
     // Movies
-    @Query("SELECT * FROM movie WHERE categoryId = :categoryId ORDER BY position LIMIT :limit") fun moviesIn(categoryId: String, limit: Int): Flow<List<MovieEntity>>
-    @Query("SELECT * FROM movie ORDER BY added DESC, id DESC LIMIT :limit") fun recentMovies(limit: Int): Flow<List<MovieEntity>>
+    // Language filter: `all` = every language; untagged (NULL) titles always show.
+    @Query("SELECT * FROM movie WHERE categoryId = :categoryId AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY position LIMIT :limit")
+    fun moviesIn(categoryId: String, limit: Int, all: Boolean, langs: List<String>): Flow<List<MovieEntity>>
+    @Query("SELECT * FROM movie WHERE (:all OR language IS NULL OR language IN (:langs)) ORDER BY added DESC, id DESC LIMIT :limit")
+    fun recentMovies(limit: Int, all: Boolean, langs: List<String>): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movie WHERE id = :id") suspend fun movie(id: Int): MovieEntity?
     @Query("SELECT * FROM movie WHERE id = :id") fun movieFlow(id: Int): Flow<MovieEntity?>
     @Query("SELECT * FROM movie WHERE id IN (:ids)") fun moviesById(ids: List<Int>): Flow<List<MovieEntity>>
@@ -48,8 +51,10 @@ interface CatalogDao {
     @Upsert suspend fun upsertMovieDetail(detail: MovieDetailEntity)
 
     // Series
-    @Query("SELECT * FROM series WHERE categoryId = :categoryId ORDER BY position LIMIT :limit") fun seriesIn(categoryId: String, limit: Int): Flow<List<SeriesEntity>>
-    @Query("SELECT * FROM series ORDER BY lastModified DESC, id DESC LIMIT :limit") fun recentlyUpdatedSeries(limit: Int): Flow<List<SeriesEntity>>
+    @Query("SELECT * FROM series WHERE categoryId = :categoryId AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY position LIMIT :limit")
+    fun seriesIn(categoryId: String, limit: Int, all: Boolean, langs: List<String>): Flow<List<SeriesEntity>>
+    @Query("SELECT * FROM series WHERE (:all OR language IS NULL OR language IN (:langs)) ORDER BY lastModified DESC, id DESC LIMIT :limit")
+    fun recentlyUpdatedSeries(limit: Int, all: Boolean, langs: List<String>): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series ORDER BY id DESC LIMIT :limit") fun newestSeries(limit: Int): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series WHERE id = :id") suspend fun series(id: Int): SeriesEntity?
     @Query("SELECT * FROM series WHERE id = :id") fun seriesFlow(id: Int): Flow<SeriesEntity?>
@@ -75,10 +80,19 @@ interface CatalogDao {
     }
 
     // Search: searchKey is the lower-cased name without accents.
-    @Query("SELECT * FROM series WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, lastModified DESC LIMIT :limit")
-    suspend fun searchSeries(q: String, limit: Int): List<SeriesEntity>
-    @Query("SELECT * FROM movie WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, added DESC LIMIT :limit")
-    suspend fun searchMovies(q: String, limit: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE searchKey LIKE '%' || :q || '%' AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY (searchKey LIKE :q || '%') DESC, lastModified DESC LIMIT :limit")
+    suspend fun searchSeries(q: String, limit: Int, all: Boolean, langs: List<String>): List<SeriesEntity>
+    @Query("SELECT * FROM movie WHERE searchKey LIKE '%' || :q || '%' AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY (searchKey LIKE :q || '%') DESC, added DESC LIMIT :limit")
+    suspend fun searchMovies(q: String, limit: Int, all: Boolean, langs: List<String>): List<MovieEntity>
+
+    // Language tagging (one-off pass for data imported before tags existed).
+    @Query("SELECT id, name, categoryId FROM movie WHERE id > :after ORDER BY id LIMIT :limit") suspend fun movieNames(after: Int, limit: Int): List<TitleName>
+    @Query("SELECT id, name, categoryId FROM series WHERE id > :after ORDER BY id LIMIT :limit") suspend fun seriesNames(after: Int, limit: Int): List<TitleName>
+    @Query("UPDATE category SET language = :language WHERE type = :type AND id = :id") suspend fun setCategoryLanguage(type: String, id: String, language: String?)
+    @Query("UPDATE movie SET language = :language WHERE id = :id") suspend fun setMovieLanguage(id: Int, language: String?)
+    @Query("UPDATE series SET language = :language WHERE id = :id") suspend fun setSeriesLanguage(id: Int, language: String?)
+    @Query("SELECT (SELECT COUNT(*) FROM movie WHERE language IS NULL) + (SELECT COUNT(*) FROM series WHERE language IS NULL)")
+    fun untaggedCount(): Flow<Int>
     @Query("SELECT * FROM channel WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, position LIMIT :limit")
     suspend fun searchChannels(q: String, limit: Int): List<ChannelEntity>
 }

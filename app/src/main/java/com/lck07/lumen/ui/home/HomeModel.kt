@@ -92,8 +92,8 @@ class HomeModel(private val c: AppContainer, private val res: Resources) {
                 channelItems(ch.sortedBy { order[it.id] ?: 0 }, now, ids.toSet())
             }
         }
-        val recentSeries = dao.recentlyUpdatedSeries(24)
-        val recentMovies = dao.recentMovies(24)
+        val recentSeries = c.profiles.languageFilter.flatMapLatest { dao.recentlyUpdatedSeries(24, it.all, it.langs) }
+        val recentMovies = c.profiles.languageFilter.flatMapLatest { dao.recentMovies(24, it.all, it.langs) }
         val moviesInProgress: Flow<List<MovieEntity>> = continueFlow.flatMapLatest { (_, movies) ->
             val ids = movies.mapNotNull { it.movieId }
             if (ids.isEmpty()) flowOf(emptyList()) else dao.moviesById(ids)

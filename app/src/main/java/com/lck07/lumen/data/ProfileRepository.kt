@@ -9,6 +9,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+/** Parameters of the DAO language clause: [all] = no filtering; [langs] is never empty (SQL `IN ()` is awkward). */
+data class LanguageFilter(val all: Boolean, val langs: List<String>) {
+    companion object {
+        fun of(contentLanguages: String): LanguageFilter {
+            val l = contentLanguages.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            return LanguageFilter(l.isEmpty(), l.ifEmpty { listOf("") })
+        }
+    }
+}
+
 /** Profiles keep favourites, watchlist and progress apart. The active one is stored in DataStore. */
 class ProfileRepository(private val db: LumenDatabase, private val settings: SettingsStore) {
     private val dao = db.profiles()
@@ -21,6 +31,10 @@ class ProfileRepository(private val db: LumenDatabase, private val settings: Set
             .distinctUntilChanged()
 
     val activeId: Flow<Int> = activeProfile.map { it?.id ?: 1 }.distinctUntilChanged()
+
+    /** The active profile's content languages, as query parameters. */
+    val languageFilter: Flow<LanguageFilter> =
+        activeProfile.map { LanguageFilter.of(it?.contentLanguages.orEmpty()) }.distinctUntilChanged()
 
     /** Creates a profile and returns its id. New profiles see German and English titles. */
     suspend fun create(name: String, avatar: Int): Int =
