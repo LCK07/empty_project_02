@@ -64,3 +64,27 @@ Apple TV feel. Each decision is recorded here.
   focus movement and channel-change timings are unverified on device.
 - **Entering the tab bar** returns to the tab that last had focus there (Compose `focusRestorer`), not
   always the selected tab as on tvOS. Redirecting in `onEnter` lost focus on the emulator, so it stays.
+
+## Personalization (profiles, favourites, watchlist, one Live TV tab, language filter)
+
+Plan: `docs/PLAN-personalization.md`.
+
+- **Database v2** with an explicit `Migration(1, 2)` instead of the destructive fallback. Existing favourites
+  and progress move into the first profile ("Me" / "Ich"). Covered by a Robolectric test that opens a v1
+  database, and checked on the emulator by upgrading over a v1.0 install with data.
+- **What is per profile:** favourites, watchlist, watch progress, content languages, and Watch Next on the
+  Google TV home screen (cleared and republished on a switch). **Device-wide:** the Xtream account,
+  parental PIN and locked categories, player settings and app language. The last profile cannot be deleted.
+- **My List replaces the Guide tab**, so the tab bar keeps seven entries. The guide is a full screen over
+  Live TV; tuning from it replaces it with the player. It opens on the favourite channels when there are any.
+- **Remote Guide key:** the Android TV emulator (API 36) does not deliver `KEYCODE_GUIDE` to apps, so this
+  path is untested; check it on a real TV.
+- **Language tags** come only from category names and titles (Xtream list endpoints have no language
+  field). Whole tokens only (`DE`, `GER`, `DEUTSCH`, `EN`, `ENG`, `[FR]` …), never words of a title, so
+  "It Follows" is not Italian. A title's own tag overrides its category's. Existing libraries are tagged once
+  in the background after the upgrade (no re-import). The filter applies to Home rows, Series, Movies,
+  category rows and Search; never to Live TV, My List, Continue Watching or Favourites.
+- **Detail buttons** may run wider than the text column so a label like "Auf der Merkliste" is never cut off.
+- **Emulator testing:** if the D-pad stops reaching the app after text entry, Gboard is stuck
+  (`dumpsys input_method` shows the input view as shown while its window is hidden). Force-stop
+  `com.google.android.inputmethod.latin`; it is not an app bug.
