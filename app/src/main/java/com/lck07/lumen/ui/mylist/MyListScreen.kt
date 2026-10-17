@@ -28,7 +28,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lck07.lumen.R
 import com.lck07.lumen.container
+import androidx.compose.ui.layout.layout
+import com.lck07.lumen.design.ChannelTile
 import com.lck07.lumen.design.LumenIcons
+import com.lck07.lumen.design.TvRow
+import com.lck07.lumen.ui.live.favouriteChannelTiles
+import com.lck07.lumen.ui.live.rememberFavouriteToggle
 import com.lck07.lumen.design.LumenSpacing
 import com.lck07.lumen.design.MessageState
 import com.lck07.lumen.design.PosterTile
@@ -57,6 +62,9 @@ fun MyListScreen(chrome: TabChrome, onOpen: (Target) -> Unit) {
             Segment.Continue -> c.library.continueTitles()
         })
     }.collectAsState(initial = null)
+    val channels by remember { favouriteChannelTiles(c) }.collectAsState(initial = emptyList())
+    val toggleFavourite = rememberFavouriteToggle()
+    val showChannels = segment == Segment.Favourites && channels.isNotEmpty()
 
     val grid = rememberLazyGridState()
     val atTop by remember { derivedStateOf { grid.firstVisibleItemIndex == 0 && grid.firstVisibleItemScrollOffset < 60 } }
@@ -83,8 +91,17 @@ fun MyListScreen(chrome: TabChrome, onOpen: (Target) -> Unit) {
                 { segment = it }, Modifier.testTag("mylist:segments"),
             )
         }
+        // Favourite channels above the movies and series; Select watches, a long press removes.
+        if (showChannels) item(span = { GridItemSpan(maxLineSpan) }, key = "channels") {
+            TvRow(
+                stringResource(R.string.tab_live), channels, { it.id },
+                Modifier.bleed(LumenSpacing.SafeX), tag = "mylist:channels",
+            ) { item, slot ->
+                ChannelTile(item, { onOpen(Target.PlayChannel(item.id)) }, slot = slot, onLongClick = { toggleFavourite(item.id) })
+            }
+        }
         val shown = items
-        if (shown != null && shown.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
+        if (shown != null && shown.isEmpty() && !showChannels) item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
             Box(Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
                 MessageState(
                     stringResource(when (segment) { Segment.Favourites -> R.string.row_favourites; Segment.Watchlist -> R.string.row_watchlist; Segment.Continue -> R.string.row_continue_watching }),
@@ -97,4 +114,11 @@ fun MyListScreen(chrome: TabChrome, onOpen: (Target) -> Unit) {
             PosterTile(item, { onOpen(item.target) }, badge = if (item.target is Target.MovieDetail) movie else series)
         }
     }
+}
+
+/** Draws [extra] past both sides of the grid's padding, so a row scrolls edge to edge like on the other tabs. */
+private fun Modifier.bleed(extra: androidx.compose.ui.unit.Dp) = layout { measurable, constraints ->
+    val e = extra.roundToPx()
+    val p = measurable.measure(constraints.copy(minWidth = constraints.maxWidth + 2 * e, maxWidth = constraints.maxWidth + 2 * e))
+    layout(constraints.maxWidth, p.height) { p.place(-e, 0) }
 }

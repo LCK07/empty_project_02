@@ -210,7 +210,7 @@
     <string name="menu_remove_watchlist">Remove from Watchlist</string>
     <string name="kind_movie">Movie</string>
     <string name="kind_series">Series</string>
-    <string name="mylist_empty_favourites">Nothing here yet. Long-press Select on a movie or series to add it to your favourites.</string>
+    <string name="mylist_empty_favourites">Nothing here yet. Long-press Select on a movie, series or channel to add it to your favourites.</string>
     <string name="mylist_empty_watchlist">Your watchlist is empty. Long-press Select on a movie or series to save it for later.</string>
     <string name="mylist_empty_continue">Nothing in progress. Start a movie or an episode and it shows up here.</string>
     <string name="profile_avatar_label">Profile: %s. Switch profile</string>

@@ -70,6 +70,7 @@ import com.lck07.lumen.design.ListRow
 import com.lck07.lumen.design.LiveBadge
 import com.lck07.lumen.design.LocalReduceMotion
 import com.lck07.lumen.design.LumenColors
+import com.lck07.lumen.design.LONG_PRESS_MS
 import com.lck07.lumen.design.LumenIcons
 import com.lck07.lumen.design.LumenMotion
 import com.lck07.lumen.design.LumenRadii
@@ -159,6 +160,9 @@ fun GuideScreen(chrome: TabChrome, onWatch: (Int) -> Unit) {
     var windowStart by remember(g) { mutableLongStateOf(initialWindow(now)) }
     var topRow by remember(g) { mutableIntStateOf((cursor.row - 1).coerceIn(0, (list.size - VISIBLE_ROWS).coerceAtLeast(0))) }
     var groupMenu by remember { mutableStateOf(false) }
+    val toggleFavourite = com.lck07.lumen.ui.live.rememberFavouriteToggle()
+    var selectDownAt by remember { mutableLongStateOf(0L) }
+    var selectLong by remember { mutableStateOf(false) }
 
     // Programmes for the rows on screen and a little around them.
     val from = windowStart - 2 * SLOT
@@ -245,8 +249,23 @@ fun GuideScreen(chrome: TabChrome, onWatch: (Int) -> Unit) {
                 .focusRequester(gridFocus)
                 .onFocusChanged { gridFocused = it.isFocused }
                 .onKeyEvent { e ->
+                    val code = e.key.nativeKeyCode
+                    if (code == AndroidKeyEvent.KEYCODE_DPAD_CENTER || code == AndroidKeyEvent.KEYCODE_ENTER) {
+                        // Select tunes on release; held, it adds the channel to or removes it from the favourites.
+                        val ch = list.getOrNull(cursor.row)
+                        when (e.type) {
+                            KeyEventType.KeyDown -> if (e.nativeKeyEvent.repeatCount == 0) { selectDownAt = android.os.SystemClock.uptimeMillis(); selectLong = false }
+                                else if (!selectLong && (e.nativeKeyEvent.isLongPress || android.os.SystemClock.uptimeMillis() - selectDownAt >= LONG_PRESS_MS)) { selectLong = true; if (ch != null) toggleFavourite(ch.id) }
+                            KeyEventType.KeyUp -> {
+                                // Tune when the programme is on now (or the guide knows nothing about it).
+                                if (!selectLong && selectDownAt != 0L && ch != null && (focused == null || focused.isOn(now))) onWatch(ch.id)
+                                selectLong = false; selectDownAt = 0L
+                            }
+                        }
+                        return@onKeyEvent true
+                    }
                     if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    when (e.key.nativeKeyCode) {
+                    when (code) {
                         AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> { moveTime(true); true }
                         AndroidKeyEvent.KEYCODE_DPAD_LEFT -> { moveTime(false); true }
                         AndroidKeyEvent.KEYCODE_DPAD_DOWN -> { moveRow(cursor.row + 1); true }
@@ -257,12 +276,6 @@ fun GuideScreen(chrome: TabChrome, onWatch: (Int) -> Unit) {
                         AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
                             val min = floorSlot(now) - 4 * SLOT
                             windowStart = (windowStart - WINDOW).coerceAtLeast(min); cursor = cursor.copy(time = (cursor.time - WINDOW).coerceAtLeast(min)); true
-                        }
-                        AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER -> {
-                            // Tune when the programme is on now (or the guide knows nothing about it).
-                            val ch = list.getOrNull(cursor.row)
-                            if (ch != null && (focused == null || focused.isOn(now))) onWatch(ch.id)
-                            true
                         }
                         else -> false
                     }
@@ -293,7 +306,7 @@ fun GuideScreen(chrome: TabChrome, onWatch: (Int) -> Unit) {
                 val y = FirstRowTop + RowHeight * (row - animTop)
                 key(ch.id) {
                     Box(Modifier.offset(y = y).fillMaxWidth().height(RowHeight)) {
-                        ChannelHeader(ch, Modifier.padding(start = LumenSpacing.SafeX).width(150.dp).height(CellHeight))
+                        ChannelHeader(ch, ch.id.toString() in favouriteIds, Modifier.padding(start = LumenSpacing.SafeX).width(150.dp).height(CellHeight))
                         Box(Modifier.offset(x = GridLeft).width(GridRight - GridLeft + 40.dp).height(CellHeight).clipToBounds()) {
                             val rowShows = showsOf(row).filter { it.stop > windowStart - SLOT && it.start < windowStart + WINDOW + SLOT }
                             if (rowShows.isEmpty()) {
@@ -354,12 +367,13 @@ private fun GuideCell(title: String, time: String?, isNow: Boolean, focused: Boo
 }
 
 @Composable
-private fun ChannelHeader(ch: ChannelEntity, modifier: Modifier) {
+private fun ChannelHeader(ch: ChannelEntity, favourite: Boolean, modifier: Modifier) {
     val item = remember(ch) { channelItems(listOf(ch), emptyMap(), emptySet()).first() }
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Txt("${ch.number}", LumenType.Caption1Strong.tabular(), Modifier.width(22.dp), color = LumenColors.Label3)
         ChannelLogo(item, Modifier.size(46.dp, 26.dp), height = 26.dp)
         Txt(ch.name, LumenType.Caption1Strong, Modifier.weight(1f))
+        if (favourite) com.lck07.lumen.design.Icon(LumenIcons.HeartFilled, tint = LumenColors.Label2, size = 12.dp)
     }
 }
 

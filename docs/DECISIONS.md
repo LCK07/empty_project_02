@@ -88,3 +88,8 @@ Plan: `docs/PLAN-personalization.md`.
 - **Emulator testing:** if the D-pad stops reaching the app after text entry, Gboard is stuck
   (`dumpsys input_method` shows the input view as shown while its window is hidden). Force-stop
   `com.google.android.inputmethod.latin`; it is not an app bug.
+- **Channel favourites** can be set from the heart button in the Live TV hero, by holding Select on a channel
+  tile (Home, Live TV, the live player's strip) or on a row in the guide (where Select alone still tunes, on
+  release). Favourite channels show a small heart in the guide and lead My List → Favourites.
+- **Long press** also counts when Android flags the key event as a long press (`KeyEvent.isLongPress`), not only
+  after 550 ms of repeats, so `adb shell input keyevent --longpress` and remotes with their own timing work.
