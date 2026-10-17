@@ -182,7 +182,7 @@ fun SettingsScreen(chrome: TabChrome, openProfiles: Boolean = false, onProfilesO
                         ListRow(
                             title, value, onClick,
                             trailingIcon = when { selected == true -> LumenIcons.Check; selected == false -> null; chevron -> LumenIcons.Chevron; else -> null },
-                            selected = selected, focusRequester = if (k == firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete)) first else null,
+                            selected = selected, focusRequester = if (k == firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete, profiles.firstOrNull { it.id == editId }?.contentLanguages.orEmpty())) first else null,
                             modifier = Modifier.testTag("setting:$k"),
                         )
                     }
@@ -342,7 +342,7 @@ fun SettingsScreen(chrome: TabChrome, openProfiles: Boolean = false, onProfilesO
                     }
                 }
                 val active = LocalScreenActive.current
-                val firstK = firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete)
+                val firstK = firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete, profiles.firstOrNull { it.id == editId }?.contentLanguages.orEmpty())
                 LaunchedEffect(page, active, firstK) {
                     // Sub-pages focus their first (or current) row; the list gets focus back when returning to it.
                     // After a PIN step the page's rows can change a moment later, so try for a few frames.
@@ -356,21 +356,24 @@ fun SettingsScreen(chrome: TabChrome, openProfiles: Boolean = false, onProfilesO
     }
 }
 
-private fun firstKey(page: Page, s: com.lck07.lumen.data.Settings, lang: String?, main: String, activeProfile: Int, confirmDelete: Boolean): String = when (page) {
+private fun firstKey(page: Page, s: com.lck07.lumen.data.Settings, lang: String?, main: String, activeProfile: Int, confirmDelete: Boolean, contentLanguages: String): String = when (page) {
     Page.Main -> main; Page.Account -> "status"
     Page.Profiles -> "p:$activeProfile"; Page.ProfileNew -> "pname"; Page.ProfileEdit -> if (confirmDelete) "rdelno" else "rname"
     Page.Language -> "lang:${lang ?: "system"}"
-    Page.ProfileLanguages -> "cl:"
+    Page.ProfileLanguages -> "cl:" + languagesKey(contentLanguages)
     Page.Guide -> "hour"; Page.GuideHour -> "h${s.guideRefreshHour}"; Page.Parental -> if (s.parentalLockOn) "cats" else "set"; Page.Categories -> ""
     Page.Player -> "audio"; Page.Audio -> "a:${s.audioLanguage ?: "device"}"; Page.Subtitles -> "s:${s.subtitleLanguage ?: "off"}"
     Page.Buffer -> "b:${s.buffer.name}"; Page.Format -> "f:${s.liveFormat.name}"; Page.About -> "version"; Page.Licences -> "lic0"
 }
 
+/** One of the offered choices ("", "de", "en", "de,en") for a stored value; anything else counts as all. */
+private fun languagesKey(v: String) = v.split(',').filter { it.isNotBlank() }.sorted().joinToString(",").takeIf { it in setOf("de", "en", "de,en") }.orEmpty()
+
 /** Label of a profile's comma-separated content languages ("" = all). */
-private fun languagesName(v: String) = when (v.split(',').filter { it.isNotBlank() }.sorted()) {
-    listOf("de") -> R.string.content_lang_de
-    listOf("en") -> R.string.content_lang_en
-    listOf("de", "en") -> R.string.content_lang_de_en
+private fun languagesName(v: String) = when (languagesKey(v)) {
+    "de" -> R.string.content_lang_de
+    "en" -> R.string.content_lang_en
+    "de,en" -> R.string.content_lang_de_en
     else -> R.string.content_lang_all
 }
 
