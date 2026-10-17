@@ -7,9 +7,16 @@ Lumen ships with no content, playlists or provider of its own.
 - **Home** opens on Resume: the series you watched last, one press from playing again.
 - **Series and Movies** with detail screens, seasons, episodes, audio and subtitle selection,
   resume positions and Up Next.
-- **Live TV** with a preview hero, channel strip, favourites, and up/down zapping.
-- **Guide** with a time grid built from your provider's XMLTV, **Search** across everything,
-  **Settings** (English/German, parental lock, player options) and Watch Next on the Google TV home screen.
+- **Live TV** with a preview hero, channel strip, favourites, and up/down zapping. The **Guide**
+  (a time grid built from your provider's XMLTV) opens from Live TV, the live player or the remote's Guide key.
+- **Profiles** without passwords: each keeps its own favourites, watchlist, progress and content languages.
+  "Who's watching?" appears at launch when there are two or more.
+- **My List** with Favourites, Watchlist and Continue Watching; Favourites and Watchlist rows on Home;
+  a long-press menu on posters.
+- **Language filter** per profile (All, German, English, German + English), read from the provider's
+  category and title tags such as `DE | Action`. Untagged titles are always shown.
+- **Search** across everything, **Settings** (English/German, parental lock, player options) and
+  Watch Next on the Google TV home screen.
 - Dark, focus-driven design built with Compose for TV and Media3. No analytics; the login stays
   in encrypted storage on the device.
 
