@@ -33,7 +33,7 @@ const val FAVOURITES_GROUP = "fav"
 suspend fun channelsOf(c: AppContainer, group: String): List<ChannelEntity> {
     val dao = c.db.catalog()
     return if (group == FAVOURITES_GROUP) {
-        val ids = c.db.library().favouriteIdsNow(com.lck07.lumen.data.FavouriteKind.Channel.key).mapNotNull { it.toIntOrNull() }
+        val ids = c.library.favouriteIdsNow(com.lck07.lumen.data.FavouriteKind.Channel).mapNotNull { it.toIntOrNull() }
         val byId = dao.channelsByIdNow(ids).associateBy { it.id }
         ids.mapNotNull { byId[it] }
     } else dao.channelsInNow(group)

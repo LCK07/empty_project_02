@@ -80,6 +80,15 @@ class FocusNavigationTest {
     }
 
     @Test
+    fun tabBarHasMyListAndNoGuideTab() {
+        rule.setContent {
+            LumenRoot(navigator = remember { Navigator() }, onExit = {}, tabContent = { _, _ -> }, screenContent = {})
+        }
+        listOf("Home", "Series", "Movies", "Live", "MyList", "Search", "Settings").forEach { rule.onNodeWithTag("tab:$it").assertExists() }
+        rule.onNodeWithTag("tab:Guide").assertDoesNotExist()
+    }
+
+    @Test
     fun backFromAScreenReturnsToTheTab() {
         lateinit var navigator: Navigator
         rule.setContent {

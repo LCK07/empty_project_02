@@ -48,6 +48,10 @@ import com.lck07.lumen.data.CatalogRepository
 import com.lck07.lumen.data.LiveFormat
 import com.lck07.lumen.data.SettingsStore
 import com.lck07.lumen.design.Icon
+import com.lck07.lumen.design.TextEntryRow
+import com.lck07.lumen.ui.profile.AvatarColours
+import androidx.compose.ui.text.input.ImeAction
+import kotlinx.coroutines.sync.withLock
 import com.lck07.lumen.design.ListRow
 import com.lck07.lumen.design.LumenColors
 import com.lck07.lumen.design.LumenIcons
@@ -65,7 +69,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
-private enum class Page { Main, Account, Language, Guide, GuideHour, Parental, Categories, Player, Audio, Subtitles, Buffer, Format, About, Licences }
+private enum class Page { Main, Account, Profiles, ProfileNew, ProfileEdit, ProfileLanguages, Language, Guide, GuideHour, Parental, Categories, Player, Audio, Subtitles, Buffer, Format, About, Licences }
 
 /** A PIN step: what the PIN pad is asking for. */
 private enum class PinStep { None, Unlock, New, Confirm, Disable }
@@ -75,7 +79,7 @@ private enum class PinStep { None, Unlock, New, Confirm, Disable }
  * to a large glyph (tvOS settings). Sub-pages open in place; Back returns to the list.
  */
 @Composable
-fun SettingsScreen(chrome: TabChrome) {
+fun SettingsScreen(chrome: TabChrome, openProfiles: Boolean = false, onProfilesOpened: () -> Unit = {}) {
     val context = LocalContext.current
     val c = context.container
     val res = context.resources
@@ -85,6 +89,16 @@ fun SettingsScreen(chrome: TabChrome) {
     val guide by c.guide.state.collectAsState(initial = null)
     val guideRunning by remember { GuideWorker.running(context) }.collectAsState(initial = false)
     val unlocked by c.parental.unlocked.collectAsState()
+    val profiles by c.profiles.profiles.collectAsState(initial = emptyList())
+    val activeId by c.profiles.activeId.collectAsState(initial = 1)
+    val untagged by remember { c.db.catalog().untaggedCount() }.collectAsState(initial = 0)
+    var newName by remember { mutableStateOf("") }
+    var editId by remember { mutableStateOf(0) }
+    var editName by remember { mutableStateOf("") }
+    var confirmDelete by remember { mutableStateOf(false) }
+    // Renames are written in the order they were typed.
+    val renameLock = remember { kotlinx.coroutines.sync.Mutex() }
+    val spare = remember { FocusRequester() }
     val stack = remember { mutableStateListOf(Page.Main) }
     val page = stack.last()
     var pin by remember { mutableStateOf(PinStep.None) }
@@ -96,7 +110,7 @@ fun SettingsScreen(chrome: TabChrome) {
     var cameBack by remember { mutableStateOf(false) }
     fun open(p: Page) {
         if (stack.last() == Page.Main) mainFocus = when (p) {
-            Page.Account -> "account"; Page.Language -> "language"; Page.Guide -> "guide"; Page.Parental -> "parental"; Page.Player -> "player"; else -> "about"
+            Page.Account -> "account"; Page.Profiles -> "profiles"; Page.Language -> "language"; Page.Guide -> "guide"; Page.Parental -> "parental"; Page.Player -> "player"; else -> "about"
         }
         stack.add(p)
     }
@@ -105,6 +119,10 @@ fun SettingsScreen(chrome: TabChrome) {
         if (pin != PinStep.None) { pin = PinStep.None; pinError = null } else back()
     }
     LaunchedEffect(Unit) { chrome.contentAtTop = true }
+    // "Manage Profiles" in the profile switcher lands here.
+    LaunchedEffect(openProfiles) {
+        if (openProfiles) { if (stack.last() != Page.Profiles) { mainFocus = "profiles"; stack.add(Page.Profiles) }; onProfilesOpened() }
+    }
 
     val languageValue = when (Locales.chosen(context)) { "en" -> stringResource(R.string.language_english); "de" -> stringResource(R.string.language_german); else -> stringResource(R.string.language_system) }
     fun langName(tag: String?): String = when (tag) {
@@ -150,7 +168,8 @@ fun SettingsScreen(chrome: TabChrome) {
                     return@Column
                 }
                 val title = when (page) {
-                    Page.Main -> R.string.tab_settings; Page.Account -> R.string.settings_account; Page.Language -> R.string.settings_language
+                    Page.Main -> R.string.tab_settings; Page.Account -> R.string.settings_account
+                    Page.Profiles, Page.ProfileEdit -> R.string.settings_profiles; Page.ProfileNew -> R.string.profile_add; Page.ProfileLanguages -> R.string.content_languages; Page.Language -> R.string.settings_language
                     Page.Guide, Page.GuideHour -> R.string.settings_guide_refresh; Page.Parental, Page.Categories -> R.string.settings_parental_lock
                     Page.Player -> R.string.settings_player; Page.Audio -> R.string.player_audio_language; Page.Subtitles -> R.string.player_subtitle_language
                     Page.Buffer -> R.string.player_buffer; Page.Format -> R.string.player_live_format; Page.About -> R.string.settings_about; Page.Licences -> R.string.about_licences
@@ -163,7 +182,7 @@ fun SettingsScreen(chrome: TabChrome) {
                         ListRow(
                             title, value, onClick,
                             trailingIcon = when { selected == true -> LumenIcons.Check; selected == false -> null; chevron -> LumenIcons.Chevron; else -> null },
-                            selected = selected, focusRequester = if (k == firstKey(page, s, Locales.chosen(context), mainFocus)) first else null,
+                            selected = selected, focusRequester = if (k == firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete)) first else null,
                             modifier = Modifier.testTag("setting:$k"),
                         )
                     }
@@ -171,6 +190,7 @@ fun SettingsScreen(chrome: TabChrome) {
                     when (page) {
                         Page.Main -> {
                             row("account", res.getString(R.string.settings_account), info?.let { if (it.expired()) res.getString(R.string.expired_banner).substringBefore('.') else res.getString(R.string.account_active) }) { open(Page.Account) }
+                            row("profiles", res.getString(R.string.settings_profiles), profiles.firstOrNull { it.id == activeId }?.name?.ifBlank { null } ?: res.getString(R.string.profile_default_name)) { open(Page.Profiles) }
                             row("language", res.getString(R.string.settings_language), languageValue) { open(Page.Language) }
                             row("guide", res.getString(R.string.settings_guide_refresh), res.getString(R.string.daily_at, hourText)) { open(Page.Guide) }
                             row("parental", res.getString(R.string.settings_parental_lock),
@@ -193,6 +213,68 @@ fun SettingsScreen(chrome: TabChrome) {
                             info?.maxConnections?.let { max -> row("cons", res.getString(R.string.account_connections, info?.activeConnections ?: 0, max), null, chevron = false) {} }
                             row("reimport", res.getString(R.string.account_reimport), null) { c.session.reimport() }
                             row("signout", res.getString(R.string.action_sign_out), null, chevron = false) { scope.launch { c.session.signOut() } }
+                        }
+                        Page.Profiles -> {
+                            text("hint", res.getString(R.string.profiles_hint))
+                            profiles.forEach { p ->
+                                row("p:${p.id}", p.name.ifBlank { res.getString(R.string.profile_default_name) }, if (p.id == activeId) res.getString(R.string.account_active) else null) {
+                                    editId = p.id; editName = p.name; confirmDelete = false; open(Page.ProfileEdit)
+                                }
+                            }
+                            row("padd", res.getString(R.string.profile_add), null) { newName = ""; open(Page.ProfileNew) }
+                        }
+                        Page.ProfileNew -> {
+                            item(key = "pname") {
+                                TextEntryRow(
+                                    res.getString(R.string.profile_name), newName, { newName = it.take(24) },
+                                    placeholder = res.getString(R.string.profile_name), imeAction = ImeAction.Done, rowRequester = first, tag = "profile:name",
+                                )
+                            }
+                            item(key = "pcreate") {
+                                ListRow(
+                                    res.getString(R.string.profile_create), null,
+                                    { scope.launch { c.profiles.create(newName, profiles.size); back() } },
+                                    trailingIcon = null, enabled = newName.isNotBlank(), modifier = Modifier.testTag("setting:pcreate"),
+                                )
+                            }
+                        }
+                        Page.ProfileEdit -> {
+                            val p = profiles.firstOrNull { it.id == editId }
+                            if (p != null) {
+                                item(key = "rname") {
+                                    TextEntryRow(
+                                        res.getString(R.string.profile_name), editName,
+                                        { v -> editName = v.take(24); scope.launch { renameLock.withLock { c.profiles.rename(p.id, v.take(24)) } } },
+                                        placeholder = res.getString(R.string.profile_default_name), imeAction = ImeAction.Done, rowRequester = if (confirmDelete) spare else first, tag = "profile:rename",
+                                    )
+                                }
+                                item(key = "rcolour") { AvatarColours(p.avatar, { i -> scope.launch { c.profiles.setAvatar(p.id, i) } }) }
+                                row("rlangs", res.getString(R.string.content_languages), res.getString(languagesName(p.contentLanguages))) { open(Page.ProfileLanguages) }
+                                val name = p.name.ifBlank { res.getString(R.string.profile_default_name) }
+                                when {
+                                    confirmDelete -> {
+                                        text("rconfirm", res.getString(R.string.profile_delete_confirm, name))
+                                        row("rdelno", res.getString(R.string.action_cancel), null, chevron = false) { confirmDelete = false }
+                                        row("rdelyes", res.getString(R.string.profile_delete_yes), null, chevron = false) {
+                                            scope.launch { if (c.profiles.delete(p.id)) { confirmDelete = false; back() } }
+                                        }
+                                    }
+                                    profiles.size > 1 -> row("rdelete", res.getString(R.string.profile_delete), null, chevron = false) { confirmDelete = true }
+                                    else -> text("rlast", res.getString(R.string.profile_last_hint))
+                                }
+                            }
+                        }
+                        Page.ProfileLanguages -> {
+                            val p = profiles.firstOrNull { it.id == editId }
+                            if (p != null) {
+                                listOf("", "de", "en", "de,en").forEach { v ->
+                                    row("cl:$v", res.getString(languagesName(v)), null, selected = languagesName(p.contentLanguages) == languagesName(v)) {
+                                        scope.launch { c.profiles.setContentLanguages(p.id, v.split(',').filter { it.isNotEmpty() }) }
+                                    }
+                                }
+                                text("clhint", res.getString(R.string.content_lang_hint))
+                                text("clcount", res.getQuantityString(R.plurals.untagged_titles, untagged, untagged))
+                            }
                         }
                         Page.Language -> listOf(null to R.string.language_system, "en" to R.string.language_english, "de" to R.string.language_german).forEach { (tag, name) ->
                             row("lang:${tag ?: "system"}", res.getString(name), null, selected = Locales.chosen(context) == tag) {
@@ -260,7 +342,7 @@ fun SettingsScreen(chrome: TabChrome) {
                     }
                 }
                 val active = LocalScreenActive.current
-                val firstK = firstKey(page, s, Locales.chosen(context), mainFocus)
+                val firstK = firstKey(page, s, Locales.chosen(context), mainFocus, activeId, confirmDelete)
                 LaunchedEffect(page, active, firstK) {
                     // Sub-pages focus their first (or current) row; the list gets focus back when returning to it.
                     // After a PIN step the page's rows can change a moment later, so try for a few frames.
@@ -274,11 +356,22 @@ fun SettingsScreen(chrome: TabChrome) {
     }
 }
 
-private fun firstKey(page: Page, s: com.lck07.lumen.data.Settings, lang: String?, main: String): String = when (page) {
-    Page.Main -> main; Page.Account -> "status"; Page.Language -> "lang:${lang ?: "system"}"
+private fun firstKey(page: Page, s: com.lck07.lumen.data.Settings, lang: String?, main: String, activeProfile: Int, confirmDelete: Boolean): String = when (page) {
+    Page.Main -> main; Page.Account -> "status"
+    Page.Profiles -> "p:$activeProfile"; Page.ProfileNew -> "pname"; Page.ProfileEdit -> if (confirmDelete) "rdelno" else "rname"
+    Page.Language -> "lang:${lang ?: "system"}"
+    Page.ProfileLanguages -> "cl:"
     Page.Guide -> "hour"; Page.GuideHour -> "h${s.guideRefreshHour}"; Page.Parental -> if (s.parentalLockOn) "cats" else "set"; Page.Categories -> ""
     Page.Player -> "audio"; Page.Audio -> "a:${s.audioLanguage ?: "device"}"; Page.Subtitles -> "s:${s.subtitleLanguage ?: "off"}"
     Page.Buffer -> "b:${s.buffer.name}"; Page.Format -> "f:${s.liveFormat.name}"; Page.About -> "version"; Page.Licences -> "lic0"
+}
+
+/** Label of a profile's comma-separated content languages ("" = all). */
+private fun languagesName(v: String) = when (v.split(',').filter { it.isNotBlank() }.sorted()) {
+    listOf("de") -> R.string.content_lang_de
+    listOf("en") -> R.string.content_lang_en
+    listOf("de", "en") -> R.string.content_lang_de_en
+    else -> R.string.content_lang_all
 }
 
 private fun bufferName(b: BufferSize) = when (b) { BufferSize.Small -> R.string.buffer_small; BufferSize.Medium -> R.string.buffer_medium; BufferSize.Large -> R.string.buffer_large }

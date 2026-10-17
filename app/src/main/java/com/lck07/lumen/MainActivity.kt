@@ -5,6 +5,7 @@ import android.content.Intent
 import kotlinx.coroutines.launch
 import android.view.KeyEvent
 import com.lck07.lumen.core.library.WatchProgress
+import com.lck07.lumen.ui.Screen
 import com.lck07.lumen.ui.TopTab
 import com.lck07.lumen.ui.model.Target
 import androidx.activity.ComponentActivity
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
             return true
         }
         if (event.keyCode == KeyEvent.KEYCODE_GUIDE) {
-            if (event.action == KeyEvent.ACTION_UP) navigator.selectTab(TopTab.Guide)
+            if (event.action == KeyEvent.ACTION_UP) navigator.push(Screen.Guide)
             return true
         }
         return super.dispatchKeyEvent(event)

@@ -30,6 +30,18 @@ class WatchNextPublisher(private val context: Context, private val db: LumenData
             !context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
     }
 
+    /** Shows only [profileId]'s Continue Watching on the home screen: clear everything, republish. */
+    suspend fun switchTo(profileId: Int) {
+        if (!supported) return
+        withContext(Dispatchers.IO) {
+            val dao = db.library()
+            dao.publishedWatchNextIds().forEach { remove(it) }
+            dao.clearWatchNextIds()
+            lastPublished.clear()
+            dao.progressNow(profileId).forEach { onProgress(it.copy(watchNextId = null)) }
+        }
+    }
+
     override suspend fun onProgress(p: ProgressEntity) {
         if (!supported) return
         val wp = p.toModel()
@@ -40,13 +52,13 @@ class WatchNextPublisher(private val context: Context, private val db: LumenData
         withContext(Dispatchers.IO) {
             try {
                 if (wp.finished || !wp.inProgress) {
-                    p.watchNextId?.let { remove(it); db.library().setWatchNextId(p.key, null) }
+                    p.watchNextId?.let { remove(it); db.library().setWatchNextId(p.profileId, p.key, null) }
                     return@withContext
                 }
                 val program = build(p, wp) ?: return@withContext
                 val id = p.watchNextId
                 if (id != null && helper.getWatchNextProgram(id) != null) helper.updateWatchNextProgram(program, id)
-                else db.library().setWatchNextId(p.key, helper.publishWatchNextProgram(program))
+                else db.library().setWatchNextId(p.profileId, p.key, helper.publishWatchNextProgram(program))
                 if (com.lck07.lumen.BuildConfig.DEBUG) Log.i(TAG, "published ${p.key}")
             } catch (e: Exception) {
                 Log.w(TAG, "Watch Next update failed: ${e.javaClass.simpleName}")

@@ -37,8 +37,11 @@ interface CatalogDao {
     @Query("SELECT COUNT(*) FROM channel") fun channelCount(): Flow<Int>
 
     // Movies
-    @Query("SELECT * FROM movie WHERE categoryId = :categoryId ORDER BY position LIMIT :limit") fun moviesIn(categoryId: String, limit: Int): Flow<List<MovieEntity>>
-    @Query("SELECT * FROM movie ORDER BY added DESC, id DESC LIMIT :limit") fun recentMovies(limit: Int): Flow<List<MovieEntity>>
+    // Language filter: `all` = every language; untagged (NULL) titles always show.
+    @Query("SELECT * FROM movie WHERE categoryId = :categoryId AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY position LIMIT :limit")
+    fun moviesIn(categoryId: String, limit: Int, all: Boolean, langs: List<String>): Flow<List<MovieEntity>>
+    @Query("SELECT * FROM movie WHERE (:all OR language IS NULL OR language IN (:langs)) ORDER BY added DESC, id DESC LIMIT :limit")
+    fun recentMovies(limit: Int, all: Boolean, langs: List<String>): Flow<List<MovieEntity>>
     @Query("SELECT * FROM movie WHERE id = :id") suspend fun movie(id: Int): MovieEntity?
     @Query("SELECT * FROM movie WHERE id = :id") fun movieFlow(id: Int): Flow<MovieEntity?>
     @Query("SELECT * FROM movie WHERE id IN (:ids)") fun moviesById(ids: List<Int>): Flow<List<MovieEntity>>
@@ -48,8 +51,10 @@ interface CatalogDao {
     @Upsert suspend fun upsertMovieDetail(detail: MovieDetailEntity)
 
     // Series
-    @Query("SELECT * FROM series WHERE categoryId = :categoryId ORDER BY position LIMIT :limit") fun seriesIn(categoryId: String, limit: Int): Flow<List<SeriesEntity>>
-    @Query("SELECT * FROM series ORDER BY lastModified DESC, id DESC LIMIT :limit") fun recentlyUpdatedSeries(limit: Int): Flow<List<SeriesEntity>>
+    @Query("SELECT * FROM series WHERE categoryId = :categoryId AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY position LIMIT :limit")
+    fun seriesIn(categoryId: String, limit: Int, all: Boolean, langs: List<String>): Flow<List<SeriesEntity>>
+    @Query("SELECT * FROM series WHERE (:all OR language IS NULL OR language IN (:langs)) ORDER BY lastModified DESC, id DESC LIMIT :limit")
+    fun recentlyUpdatedSeries(limit: Int, all: Boolean, langs: List<String>): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series ORDER BY id DESC LIMIT :limit") fun newestSeries(limit: Int): Flow<List<SeriesEntity>>
     @Query("SELECT * FROM series WHERE id = :id") suspend fun series(id: Int): SeriesEntity?
     @Query("SELECT * FROM series WHERE id = :id") fun seriesFlow(id: Int): Flow<SeriesEntity?>
@@ -75,10 +80,19 @@ interface CatalogDao {
     }
 
     // Search: searchKey is the lower-cased name without accents.
-    @Query("SELECT * FROM series WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, lastModified DESC LIMIT :limit")
-    suspend fun searchSeries(q: String, limit: Int): List<SeriesEntity>
-    @Query("SELECT * FROM movie WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, added DESC LIMIT :limit")
-    suspend fun searchMovies(q: String, limit: Int): List<MovieEntity>
+    @Query("SELECT * FROM series WHERE searchKey LIKE '%' || :q || '%' AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY (searchKey LIKE :q || '%') DESC, lastModified DESC LIMIT :limit")
+    suspend fun searchSeries(q: String, limit: Int, all: Boolean, langs: List<String>): List<SeriesEntity>
+    @Query("SELECT * FROM movie WHERE searchKey LIKE '%' || :q || '%' AND (:all OR language IS NULL OR language IN (:langs)) ORDER BY (searchKey LIKE :q || '%') DESC, added DESC LIMIT :limit")
+    suspend fun searchMovies(q: String, limit: Int, all: Boolean, langs: List<String>): List<MovieEntity>
+
+    // Language tagging (one-off pass for data imported before tags existed).
+    @Query("SELECT id, name, categoryId FROM movie WHERE id > :after ORDER BY id LIMIT :limit") suspend fun movieNames(after: Int, limit: Int): List<TitleName>
+    @Query("SELECT id, name, categoryId FROM series WHERE id > :after ORDER BY id LIMIT :limit") suspend fun seriesNames(after: Int, limit: Int): List<TitleName>
+    @Query("UPDATE category SET language = :language WHERE type = :type AND id = :id") suspend fun setCategoryLanguage(type: String, id: String, language: String?)
+    @Query("UPDATE movie SET language = :language WHERE id = :id") suspend fun setMovieLanguage(id: Int, language: String?)
+    @Query("UPDATE series SET language = :language WHERE id = :id") suspend fun setSeriesLanguage(id: Int, language: String?)
+    @Query("SELECT (SELECT COUNT(*) FROM movie WHERE language IS NULL) + (SELECT COUNT(*) FROM series WHERE language IS NULL)")
+    fun untaggedCount(): Flow<Int>
     @Query("SELECT * FROM channel WHERE searchKey LIKE '%' || :q || '%' ORDER BY (searchKey LIKE :q || '%') DESC, position LIMIT :limit")
     suspend fun searchChannels(q: String, limit: Int): List<ChannelEntity>
 }
@@ -129,20 +143,43 @@ interface GuideDao {
 
 @Dao
 interface LibraryDao {
-    @Query("SELECT * FROM progress ORDER BY updatedAt DESC") fun progress(): Flow<List<ProgressEntity>>
-    @Query("SELECT * FROM progress ORDER BY updatedAt DESC") suspend fun progressNow(): List<ProgressEntity>
-    @Query("SELECT * FROM progress WHERE `key` = :key") suspend fun progress(key: String): ProgressEntity?
-    @Query("SELECT * FROM progress WHERE seriesId = :seriesId") fun progressForSeries(seriesId: Int): Flow<List<ProgressEntity>>
-    @Query("SELECT * FROM progress WHERE movieId = :movieId") fun progressForMovie(movieId: Int): Flow<ProgressEntity?>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC") fun progress(profileId: Int): Flow<List<ProgressEntity>>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC") suspend fun progressNow(profileId: Int): List<ProgressEntity>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND `key` = :key") suspend fun progress(profileId: Int, key: String): ProgressEntity?
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND seriesId = :seriesId") fun progressForSeries(profileId: Int, seriesId: Int): Flow<List<ProgressEntity>>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND movieId = :movieId") fun progressForMovie(profileId: Int, movieId: Int): Flow<ProgressEntity?>
     @Upsert suspend fun upsertProgress(p: ProgressEntity)
-    @Query("UPDATE progress SET watchNextId = :id WHERE `key` = :key") suspend fun setWatchNextId(key: String, id: Long?)
-    @Query("DELETE FROM progress WHERE `key` = :key") suspend fun deleteProgress(key: String)
+    @Query("UPDATE progress SET watchNextId = :id WHERE profileId = :profileId AND `key` = :key") suspend fun setWatchNextId(profileId: Int, key: String, id: Long?)
+    @Query("DELETE FROM progress WHERE profileId = :profileId AND `key` = :key") suspend fun deleteProgress(profileId: Int, key: String)
+    @Query("SELECT watchNextId FROM progress WHERE watchNextId IS NOT NULL") suspend fun publishedWatchNextIds(): List<Long>
+    @Query("UPDATE progress SET watchNextId = NULL WHERE watchNextId IS NOT NULL") suspend fun clearWatchNextIds()
 
-    @Query("SELECT * FROM favourite WHERE kind = :kind ORDER BY addedAt DESC") fun favourites(kind: String): Flow<List<FavouriteEntity>>
-    @Query("SELECT * FROM favourite ORDER BY addedAt DESC") fun allFavourites(): Flow<List<FavouriteEntity>>
-    @Query("SELECT itemId FROM favourite WHERE kind = :kind ORDER BY addedAt DESC") suspend fun favouriteIdsNow(kind: String): List<String>
-    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE kind = :kind AND itemId = :itemId") fun isFavourite(kind: String, itemId: String): Flow<Boolean>
-    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE kind = :kind AND itemId = :itemId") suspend fun isFavouriteNow(kind: String, itemId: String): Boolean
+    @Query("SELECT * FROM favourite WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") fun favourites(profileId: Int, kind: String): Flow<List<FavouriteEntity>>
+    @Query("SELECT * FROM favourite WHERE profileId = :profileId ORDER BY addedAt DESC") fun allFavourites(profileId: Int): Flow<List<FavouriteEntity>>
+    @Query("SELECT itemId FROM favourite WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") suspend fun favouriteIdsNow(profileId: Int, kind: String): List<String>
+    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") fun isFavourite(profileId: Int, kind: String, itemId: String): Flow<Boolean>
+    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun isFavouriteNow(profileId: Int, kind: String, itemId: String): Boolean
     @Upsert suspend fun addFavourite(f: FavouriteEntity)
-    @Query("DELETE FROM favourite WHERE kind = :kind AND itemId = :itemId") suspend fun removeFavourite(kind: String, itemId: String)
+    @Query("DELETE FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun removeFavourite(profileId: Int, kind: String, itemId: String)
+
+    @Query("SELECT * FROM watchlist WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") fun watchlist(profileId: Int, kind: String): Flow<List<WatchlistEntity>>
+    @Query("SELECT COUNT(*) > 0 FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") fun isInWatchlist(profileId: Int, kind: String, itemId: String): Flow<Boolean>
+    @Query("SELECT COUNT(*) > 0 FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun isInWatchlistNow(profileId: Int, kind: String, itemId: String): Boolean
+    @Upsert suspend fun addToWatchlist(w: WatchlistEntity)
+    @Query("DELETE FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun removeFromWatchlist(profileId: Int, kind: String, itemId: String)
+}
+
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM profile ORDER BY id") fun profiles(): Flow<List<ProfileEntity>>
+    @Query("SELECT * FROM profile ORDER BY id") suspend fun profilesNow(): List<ProfileEntity>
+    @Query("SELECT * FROM profile WHERE id = :id") suspend fun profile(id: Int): ProfileEntity?
+    @Insert suspend fun insert(p: ProfileEntity): Long
+    @Query("UPDATE profile SET name = :name WHERE id = :id") suspend fun rename(id: Int, name: String)
+    @Query("UPDATE profile SET avatar = :avatar WHERE id = :id") suspend fun setAvatar(id: Int, avatar: Int)
+    @Query("UPDATE profile SET contentLanguages = :languages WHERE id = :id") suspend fun setContentLanguages(id: Int, languages: String)
+    @Query("DELETE FROM profile WHERE id = :id") suspend fun deleteProfile(id: Int)
+    @Query("DELETE FROM favourite WHERE profileId = :id") suspend fun deleteFavourites(id: Int)
+    @Query("DELETE FROM watchlist WHERE profileId = :id") suspend fun deleteWatchlist(id: Int)
+    @Query("DELETE FROM progress WHERE profileId = :id") suspend fun deleteProgress(id: Int)
 }

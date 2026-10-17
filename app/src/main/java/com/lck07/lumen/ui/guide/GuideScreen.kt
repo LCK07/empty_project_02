@@ -136,17 +136,18 @@ fun GuideScreen(chrome: TabChrome, onWatch: (Int) -> Unit) {
     LaunchedEffect(Unit) {
         if (group == null) {
             val last = s.lastChannelId?.let { dao.channel(it) }
-            val favs = channelsOf(c, FAVOURITES_GROUP)
+            // Opens on the favourite channels when there are any.
             group = when {
-                last != null && favs.any { it.id == last.id } -> FAVOURITES_GROUP
+                channelsOf(c, FAVOURITES_GROUP).isNotEmpty() -> FAVOURITES_GROUP
                 last?.categoryId != null -> last.categoryId
-                favs.isNotEmpty() -> FAVOURITES_GROUP
                 else -> cats.firstOrNull()?.id
             }
         }
     }
     val g = group ?: return
-    val channels by produceState<List<ChannelEntity>?>(null, g) { value = channelsOf(c, g) }
+    // The favourites group follows the active profile and the hearts as they change.
+    val favouriteIds by c.library.favourites(com.lck07.lumen.data.FavouriteKind.Channel).collectAsState(initial = emptyList())
+    val channels by produceState<List<ChannelEntity>?>(null, g, favouriteIds) { value = channelsOf(c, g) }
     val list = channels ?: return
     val groups = listOf(FAVOURITES_GROUP to stringResource(R.string.row_favourites)) + cats.map { it.id to it.name }
     val groupTitle = groups.firstOrNull { it.first == g }?.second ?: ""

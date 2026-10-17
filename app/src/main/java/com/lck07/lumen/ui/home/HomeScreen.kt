@@ -92,6 +92,9 @@ data class HomeHero(
 data class HomeState(
     val hero: HomeHero? = null,
     val continueWatching: List<EpisodeTileItem> = emptyList(),
+    /** Favourite movies and series, newest first. */
+    val favourites: List<PosterItem> = emptyList(),
+    val watchlist: List<PosterItem> = emptyList(),
     val upNextTitle: String? = null,
     val upNext: List<EpisodeTileItem> = emptyList(),
     val favouriteChannels: List<ChannelItem> = emptyList(),
@@ -143,6 +146,24 @@ fun HomeScreen(
                         stringResource(R.string.row_continue_watching), state.continueWatching, { it.key },
                         Modifier.revealOnFocus(list, i), tag = "row:cw",
                     ) { item, slot -> EpisodeTile(item, { onOpen(item.target) }, slot = slot) }
+                }
+            }
+            if (state.favourites.isNotEmpty()) {
+                val i = rowIndex()
+                item(key = "myfav") {
+                    TvRow(
+                        stringResource(R.string.row_favourites), state.favourites, { it.key },
+                        Modifier.revealOnFocus(list, i), tag = "row:myfav",
+                    ) { item, slot -> PosterTile(item, { onOpen(item.target) }, slot = slot) }
+                }
+            }
+            if (state.watchlist.isNotEmpty()) {
+                val i = rowIndex()
+                item(key = "watchlist") {
+                    TvRow(
+                        stringResource(R.string.row_watchlist), state.watchlist, { it.key },
+                        Modifier.revealOnFocus(list, i), tag = "row:watchlist",
+                    ) { item, slot -> PosterTile(item, { onOpen(item.target) }, slot = slot) }
                 }
             }
             if (state.upNext.isNotEmpty() && state.upNextTitle != null) {
