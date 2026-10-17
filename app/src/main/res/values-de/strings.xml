@@ -183,4 +183,5 @@
     <string name="phone_send">An den Fernseher senden</string>
     <string name="phone_sent">Gesendet. Schau auf deinen Fernseher.</string>
     <string name="playback_error_title">Wiedergabe nicht möglich</string>
+    <string name="profile_default_name">Ich</string>
 </resources>

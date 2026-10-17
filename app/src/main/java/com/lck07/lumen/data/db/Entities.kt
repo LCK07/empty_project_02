@@ -18,6 +18,8 @@ data class CategoryEntity(
     val name: String,
     val position: Int,
     val gen: Int,
+    /** ISO code from the language tagging pass; null = untagged. */
+    val language: String? = null,
 )
 
 @Entity(tableName = "channel", indices = [Index("categoryId", "position"), Index("epgId"), Index("searchKey"), Index("position")])
@@ -47,6 +49,7 @@ data class MovieEntity(
     val extension: String,
     val position: Int,
     val gen: Int,
+    val language: String? = null,
 )
 
 /** Fetched when a film is opened (get_vod_info). Kept across catalogue refreshes. */
@@ -80,6 +83,7 @@ data class SeriesEntity(
     val backdrop: String?,
     val position: Int,
     val gen: Int,
+    val language: String? = null,
 )
 
 /** Fetched when a series is opened or played (get_series_info). */
@@ -120,9 +124,10 @@ data class ProgrammeEntity(
 )
 
 /** Where playback stopped; see core WatchProgress for the key format. */
-@Entity(tableName = "progress", indices = [Index("updatedAt"), Index("seriesId")])
+@Entity(tableName = "progress", primaryKeys = ["profileId", "key"], indices = [Index("updatedAt"), Index("seriesId")])
 data class ProgressEntity(
-    @PrimaryKey val key: String,
+    val profileId: Int,
+    val key: String,
     val seriesId: Int?,
     val movieId: Int?,
     val episodeId: String?,
@@ -133,12 +138,35 @@ data class ProgressEntity(
     @ColumnInfo(defaultValue = "NULL") val watchNextId: Long? = null,
 )
 
-@Entity(tableName = "favourite", primaryKeys = ["kind", "itemId"])
+@Entity(tableName = "favourite", primaryKeys = ["profileId", "kind", "itemId"])
 data class FavouriteEntity(
+    val profileId: Int,
     /** "series", "movie" or "channel". */
     val kind: String,
     val itemId: String,
     val addedAt: Long,
+)
+
+/** "Watch later" list; same shape as favourite. Kinds are "series" and "movie". */
+@Entity(tableName = "watchlist", primaryKeys = ["profileId", "kind", "itemId"])
+data class WatchlistEntity(
+    val profileId: Int,
+    val kind: String,
+    val itemId: String,
+    val addedAt: Long,
+)
+
+/** Profiles keep favourites, watchlist and progress apart. They are not password-protected. */
+@Entity(tableName = "profile")
+data class ProfileEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    /** Empty = show the localised default name. */
+    val name: String,
+    /** Index into the avatar colour palette. */
+    val avatar: Int,
+    /** Comma-separated ISO codes ("de,en"); empty = all languages. */
+    val contentLanguages: String,
+    val createdAt: Long,
 )
 
 /** A programme joined with nothing else; used for now/next lookups. */

@@ -129,20 +129,43 @@ interface GuideDao {
 
 @Dao
 interface LibraryDao {
-    @Query("SELECT * FROM progress ORDER BY updatedAt DESC") fun progress(): Flow<List<ProgressEntity>>
-    @Query("SELECT * FROM progress ORDER BY updatedAt DESC") suspend fun progressNow(): List<ProgressEntity>
-    @Query("SELECT * FROM progress WHERE `key` = :key") suspend fun progress(key: String): ProgressEntity?
-    @Query("SELECT * FROM progress WHERE seriesId = :seriesId") fun progressForSeries(seriesId: Int): Flow<List<ProgressEntity>>
-    @Query("SELECT * FROM progress WHERE movieId = :movieId") fun progressForMovie(movieId: Int): Flow<ProgressEntity?>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC") fun progress(profileId: Int): Flow<List<ProgressEntity>>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId ORDER BY updatedAt DESC") suspend fun progressNow(profileId: Int): List<ProgressEntity>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND `key` = :key") suspend fun progress(profileId: Int, key: String): ProgressEntity?
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND seriesId = :seriesId") fun progressForSeries(profileId: Int, seriesId: Int): Flow<List<ProgressEntity>>
+    @Query("SELECT * FROM progress WHERE profileId = :profileId AND movieId = :movieId") fun progressForMovie(profileId: Int, movieId: Int): Flow<ProgressEntity?>
     @Upsert suspend fun upsertProgress(p: ProgressEntity)
-    @Query("UPDATE progress SET watchNextId = :id WHERE `key` = :key") suspend fun setWatchNextId(key: String, id: Long?)
-    @Query("DELETE FROM progress WHERE `key` = :key") suspend fun deleteProgress(key: String)
+    @Query("UPDATE progress SET watchNextId = :id WHERE profileId = :profileId AND `key` = :key") suspend fun setWatchNextId(profileId: Int, key: String, id: Long?)
+    @Query("DELETE FROM progress WHERE profileId = :profileId AND `key` = :key") suspend fun deleteProgress(profileId: Int, key: String)
+    @Query("SELECT watchNextId FROM progress WHERE watchNextId IS NOT NULL") suspend fun publishedWatchNextIds(): List<Long>
+    @Query("UPDATE progress SET watchNextId = NULL WHERE watchNextId IS NOT NULL") suspend fun clearWatchNextIds()
 
-    @Query("SELECT * FROM favourite WHERE kind = :kind ORDER BY addedAt DESC") fun favourites(kind: String): Flow<List<FavouriteEntity>>
-    @Query("SELECT * FROM favourite ORDER BY addedAt DESC") fun allFavourites(): Flow<List<FavouriteEntity>>
-    @Query("SELECT itemId FROM favourite WHERE kind = :kind ORDER BY addedAt DESC") suspend fun favouriteIdsNow(kind: String): List<String>
-    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE kind = :kind AND itemId = :itemId") fun isFavourite(kind: String, itemId: String): Flow<Boolean>
-    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE kind = :kind AND itemId = :itemId") suspend fun isFavouriteNow(kind: String, itemId: String): Boolean
+    @Query("SELECT * FROM favourite WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") fun favourites(profileId: Int, kind: String): Flow<List<FavouriteEntity>>
+    @Query("SELECT * FROM favourite WHERE profileId = :profileId ORDER BY addedAt DESC") fun allFavourites(profileId: Int): Flow<List<FavouriteEntity>>
+    @Query("SELECT itemId FROM favourite WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") suspend fun favouriteIdsNow(profileId: Int, kind: String): List<String>
+    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") fun isFavourite(profileId: Int, kind: String, itemId: String): Flow<Boolean>
+    @Query("SELECT COUNT(*) > 0 FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun isFavouriteNow(profileId: Int, kind: String, itemId: String): Boolean
     @Upsert suspend fun addFavourite(f: FavouriteEntity)
-    @Query("DELETE FROM favourite WHERE kind = :kind AND itemId = :itemId") suspend fun removeFavourite(kind: String, itemId: String)
+    @Query("DELETE FROM favourite WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun removeFavourite(profileId: Int, kind: String, itemId: String)
+
+    @Query("SELECT * FROM watchlist WHERE profileId = :profileId AND kind = :kind ORDER BY addedAt DESC") fun watchlist(profileId: Int, kind: String): Flow<List<WatchlistEntity>>
+    @Query("SELECT COUNT(*) > 0 FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") fun isInWatchlist(profileId: Int, kind: String, itemId: String): Flow<Boolean>
+    @Query("SELECT COUNT(*) > 0 FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun isInWatchlistNow(profileId: Int, kind: String, itemId: String): Boolean
+    @Upsert suspend fun addToWatchlist(w: WatchlistEntity)
+    @Query("DELETE FROM watchlist WHERE profileId = :profileId AND kind = :kind AND itemId = :itemId") suspend fun removeFromWatchlist(profileId: Int, kind: String, itemId: String)
+}
+
+@Dao
+interface ProfileDao {
+    @Query("SELECT * FROM profile ORDER BY id") fun profiles(): Flow<List<ProfileEntity>>
+    @Query("SELECT * FROM profile ORDER BY id") suspend fun profilesNow(): List<ProfileEntity>
+    @Query("SELECT * FROM profile WHERE id = :id") suspend fun profile(id: Int): ProfileEntity?
+    @Insert suspend fun insert(p: ProfileEntity): Long
+    @Query("UPDATE profile SET name = :name WHERE id = :id") suspend fun rename(id: Int, name: String)
+    @Query("UPDATE profile SET avatar = :avatar WHERE id = :id") suspend fun setAvatar(id: Int, avatar: Int)
+    @Query("UPDATE profile SET contentLanguages = :languages WHERE id = :id") suspend fun setContentLanguages(id: Int, languages: String)
+    @Query("DELETE FROM profile WHERE id = :id") suspend fun deleteProfile(id: Int)
+    @Query("DELETE FROM favourite WHERE profileId = :id") suspend fun deleteFavourites(id: Int)
+    @Query("DELETE FROM watchlist WHERE profileId = :id") suspend fun deleteWatchlist(id: Int)
+    @Query("DELETE FROM progress WHERE profileId = :id") suspend fun deleteProgress(id: Int)
 }
