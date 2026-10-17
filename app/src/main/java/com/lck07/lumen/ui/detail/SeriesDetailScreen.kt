@@ -125,6 +125,7 @@ fun SeriesDetailScreen(seriesId: Int, onOpen: (Target) -> Unit) {
     var loadError by remember { mutableStateOf<Throwable?>(null) }
     var attempt by remember { mutableStateOf(0) }
     val primaryButton = remember { FocusRequester() }
+    val onWatchlist by remember(seriesId) { c.library.isInWatchlist(FavouriteKind.Series, seriesId.toString()) }.collectAsState(initial = false)
 
     // Cached data shows at once; the episode list is refreshed from the server behind it.
     LaunchedEffect(seriesId, attempt) {
@@ -188,6 +189,12 @@ fun SeriesDetailScreen(seriesId: Int, onOpen: (Target) -> Unit) {
                         toaster.show(res.getString(if (now) R.string.added_to_favourites else R.string.removed_from_favourites))
                     }
                 }
+                WatchlistButton(onWatchlist) {
+                    scope.launch {
+                        val now = c.library.toggleWatchlist(FavouriteKind.Series, seriesId.toString())
+                        toaster.show(res.getString(if (now) R.string.added_to_watchlist else R.string.removed_from_watchlist))
+                    }
+                }
             }
         }
 
@@ -241,5 +248,15 @@ fun FavouriteButton(on: Boolean, onClick: () -> Unit) {
         null, onClick, icon = if (on) LumenIcons.HeartFilled else LumenIcons.Heart,
         label = stringResource(if (on) R.string.favourite_on else R.string.favourite_off), selected = on,
         modifier = Modifier.testTag("detail:favourite"),
+    )
+}
+
+/** "+ Watchlist" / "On Watchlist" (ticked) next to the heart. */
+@Composable
+fun WatchlistButton(on: Boolean, onClick: () -> Unit) {
+    LumenButton(
+        stringResource(if (on) R.string.watchlist_on else R.string.watchlist_add), onClick,
+        icon = if (on) LumenIcons.Check else null, selected = on,
+        modifier = Modifier.testTag("detail:watchlist"),
     )
 }

@@ -52,6 +52,10 @@ fun LumenRoot(
     onExit: () -> Unit,
     tabContent: @Composable (tab: TopTab, chrome: TabChrome) -> Unit,
     screenContent: @Composable (screen: Screen) -> Unit,
+    /** Shown after the last tab inside the tab bar (the profile avatar). */
+    trailing: (@Composable () -> Unit)? = null,
+    /** Panels over everything, inside the toaster's scope (menus, the profile switcher). */
+    overlays: @Composable (chrome: TabChrome) -> Unit = {},
 ) {
     val toaster = remember { Toaster() }
     val chrome = remember { TabChrome() }
@@ -91,7 +95,7 @@ fun LumenRoot(
                         TabItem(TopTab.Series, stringResource(R.string.tab_series)),
                         TabItem(TopTab.Movies, stringResource(R.string.tab_movies)),
                         TabItem(TopTab.Live, stringResource(R.string.tab_live)),
-                        TabItem(TopTab.Guide, stringResource(R.string.tab_guide)),
+                        TabItem(TopTab.MyList, stringResource(R.string.tab_my_list)),
                         TabItem(TopTab.Search, stringResource(R.string.tab_search), LumenIcons.Search),
                         TabItem(TopTab.Settings, stringResource(R.string.tab_settings), LumenIcons.Gear),
                     ),
@@ -101,6 +105,7 @@ fun LumenRoot(
                     selectedRequester = chrome.tabRequester,
                     contentRequester = navigator.contentRequester,
                     modifier = Modifier.onFocusChanged { chrome.tabBarFocused = it.hasFocus },
+                    trailing = trailing,
                 )
             }
             navigator.stack.forEachIndexed { i, screen ->
@@ -109,6 +114,7 @@ fun LumenRoot(
                 }
             }
             ToastHost(toaster)
+            overlays(chrome)
         }
     }
 }

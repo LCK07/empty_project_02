@@ -60,6 +60,7 @@ fun MovieDetailScreen(movieId: Int, onOpen: (Target) -> Unit) {
         }
     }.collectAsState(initial = null)
     val primary = remember { FocusRequester() }
+    val onWatchlist by remember(movieId) { c.library.isInWatchlist(FavouriteKind.Movie, movieId.toString()) }.collectAsState(initial = false)
 
     LaunchedEffect(movieId) {
         val client = c.account.client ?: return@LaunchedEffect
@@ -110,6 +111,12 @@ fun MovieDetailScreen(movieId: Int, onOpen: (Target) -> Unit) {
                     scope.launch {
                         val now = c.library.toggleFavourite(FavouriteKind.Movie, movieId.toString())
                         toaster.show(res.getString(if (now) R.string.added_to_favourites else R.string.removed_from_favourites))
+                    }
+                }
+                WatchlistButton(onWatchlist) {
+                    scope.launch {
+                        val now = c.library.toggleWatchlist(FavouriteKind.Movie, movieId.toString())
+                        toaster.show(res.getString(if (now) R.string.added_to_watchlist else R.string.removed_from_watchlist))
                     }
                 }
             }

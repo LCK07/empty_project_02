@@ -52,6 +52,13 @@ object LumenColors {
     val GlassStrongOpaque = Color(22, 22, 24).copy(alpha = 0.95f)
     val GlassHighlight = Color.White.copy(alpha = 0.16f)
     val GlassEdge = Color.White.copy(alpha = 0.08f)
+
+    /** Profile avatar colours; a profile stores the index. White initials stay readable on all of them. */
+    val Avatars = listOf(
+        Color(0xFF0A74E0), Color(0xFF1F9D4D), Color(0xFFD9730D), Color(0xFF9B4BD6),
+        Color(0xFFD6336C), Color(0xFF14899C), Color(0xFFA8860A), Color(0xFFD13B33),
+    )
+    fun avatar(index: Int): Color = Avatars[Math.floorMod(index, Avatars.size)]
 }
 
 val Inter = FontFamily(

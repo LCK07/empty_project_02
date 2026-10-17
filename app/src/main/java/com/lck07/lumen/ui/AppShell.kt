@@ -9,6 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -29,6 +31,11 @@ import com.lck07.lumen.design.MessageState
 import com.lck07.lumen.player.VodPlayerScreen
 import com.lck07.lumen.ui.live.LivePlayerScreen
 import com.lck07.lumen.ui.guide.GuideScreen
+import com.lck07.lumen.ui.mylist.MyListScreen
+import com.lck07.lumen.ui.profile.ProfileAvatarButton
+import com.lck07.lumen.ui.profile.ProfileSwitcher
+import com.lck07.lumen.ui.profile.WhoIsWatching
+import com.lck07.lumen.design.LocalPosterLongClick
 import com.lck07.lumen.ui.search.SearchScreen
 import com.lck07.lumen.ui.settings.SettingsScreen
 import com.lck07.lumen.ui.live.LiveTab
@@ -76,7 +83,17 @@ fun AppShell(navigator: Navigator, onExit: () -> Unit) {
                 LaunchedEffect(a.account) { c.session.refreshInBackground() }
                 // Relaunched soon after leaving: back to the same tab and detail screen.
                 remember { restoreLastScreen(navigator, s); true }
-                MainTabs(navigator, onExit)
+                // With two or more profiles, ask who is watching once per launch.
+                val profiles by c.profiles.profiles.collectAsState(initial = null)
+                val activeId by c.profiles.activeId.collectAsState(initial = 1)
+                var picked by rememberSaveable { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+                val all = profiles
+                when {
+                    all == null -> Blank()
+                    !picked && all.size >= 2 -> WhoIsWatching(all, activeId, { id -> scope.launch { c.profiles.select(id) }; picked = true }, onExit)
+                    else -> MainTabs(navigator, onExit)
+                }
             }
         }
     }
@@ -125,10 +142,30 @@ private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val onOpen: (Target) -> Unit = { navigator.open(it) }
+    val profiles by c.profiles.profiles.collectAsState(initial = emptyList())
+    val active by c.profiles.activeProfile.collectAsState(initial = null)
+    var switcher by remember { mutableStateOf(false) }
+    val posterMenu = remember { PosterMenuState() }
+    val openPosterMenu = remember { { p: com.lck07.lumen.ui.model.PosterItem -> posterMenu.open(p) } }
     Box(Modifier.fillMaxSize()) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalPosterLongClick provides openPosterMenu) {
     LumenRoot(
         navigator = navigator,
         onExit = onExit,
+        trailing = { ProfileAvatarButton(active) { switcher = true } },
+        overlays = { chrome ->
+            PosterMenuHost(posterMenu) { navigator.contentRequester.requestFocus() }
+            if (switcher) ProfileSwitcher(
+                profiles, active?.id ?: 1,
+                onPick = { id ->
+                    scope.launch { c.profiles.select(id) }
+                    switcher = false
+                    scope.launch { withFrameNanos { }; runCatching { chrome.tabRequester.requestFocus() } }
+                },
+                onManage = { switcher = false; navigator.openProfiles = true; navigator.selectTab(TopTab.Settings) },
+                onDismiss = { switcher = false; scope.launch { withFrameNanos { }; runCatching { chrome.tabRequester.requestFocus() } } },
+            )
+        },
         tabContent = { tab, chrome ->
             when (tab) {
                 TopTab.Home -> {
@@ -155,10 +192,10 @@ private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
                 }
                 TopTab.Series -> SeriesTab(chrome, onOpen)
                 TopTab.Movies -> MoviesTab(chrome, onOpen)
-                TopTab.Guide -> GuideScreen(chrome, onWatch = { navigator.push(Screen.Live(it)) })
-                TopTab.Live -> LiveTab(chrome, onWatch = { navigator.push(Screen.Live(it)) }, onGuide = { navigator.selectTab(TopTab.Guide) })
+                TopTab.MyList -> MyListScreen(chrome, onOpen)
+                TopTab.Live -> LiveTab(chrome, onWatch = { navigator.push(Screen.Live(it)) }, onGuide = { navigator.push(Screen.Guide) })
                 TopTab.Search -> SearchScreen(chrome, onOpen)
-                TopTab.Settings -> SettingsScreen(chrome)
+                TopTab.Settings -> SettingsScreen(chrome, openProfiles = navigator.openProfiles, onProfilesOpened = { navigator.openProfiles = false })
             }
         },
         screenContent = { screen ->
@@ -166,10 +203,13 @@ private fun MainTabs(navigator: Navigator, onExit: () -> Unit) {
                 is Screen.SeriesDetail -> SeriesDetailScreen(screen.seriesId, onOpen)
                 is Screen.MovieDetail -> MovieDetailScreen(screen.movieId, onOpen)
                 is Screen.Vod -> VodPlayerScreen(screen.request, onPlayNext = { navigator.replaceTop(Screen.Vod(it)) }, onExit = { navigator.pop() })
-                is Screen.Live -> LivePlayerScreen(screen.channelId, onGuide = { navigator.selectTab(TopTab.Guide) })
+                is Screen.Live -> LivePlayerScreen(screen.channelId, onGuide = { navigator.push(Screen.Guide) })
+                // Tuning from the guide replaces it (and any player under it) with the new channel.
+                Screen.Guide -> GuideScreen(remember { TabChrome() }, onWatch = { id -> navigator.stack.removeAll { it is Screen.Guide }; navigator.push(Screen.Live(id)) })
             }
         },
     )
+    }
     StatusBanner(Modifier.align(Alignment.BottomCenter))
     }
 }

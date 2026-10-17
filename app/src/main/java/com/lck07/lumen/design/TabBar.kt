@@ -45,6 +45,8 @@ fun <T> TabBar(
     modifier: Modifier = Modifier,
     selectedRequester: FocusRequester = remember { FocusRequester() },
     contentRequester: FocusRequester? = null,
+    /** Something after the last tab (the profile avatar); it takes the right-edge bump itself. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val reduce = LocalReduceMotion.current
     val shown by animateFloatAsState(if (visible) 1f else 0f, if (reduce) tween(150) else tween(450), label = "tabbar")
@@ -86,7 +88,7 @@ fun <T> TabBar(
                                 state, role = Role.Tab, selected = isSel,
                                 label = if (tab.icon != null) tab.title else null,
                                 onKey = { k ->
-                                    if ((k == Key.DirectionLeft && i == 0) || (k == Key.DirectionRight && i == tabs.lastIndex)) {
+                                    if ((k == Key.DirectionLeft && i == 0) || (k == Key.DirectionRight && i == tabs.lastIndex && trailing == null)) {
                                         state.nudge(if (k == Key.DirectionLeft) Travel.Left else Travel.Right); true
                                     } else false
                                 },
@@ -100,6 +102,7 @@ fun <T> TabBar(
                         else Txt(tab.title, LumenType.Caption1.copy(fontWeight = if (isSel || state.focused) FontWeight.SemiBold else FontWeight.Medium), color = fg)
                     }
                 }
+                trailing?.invoke()
             }
         }
     }

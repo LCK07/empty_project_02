@@ -9,12 +9,21 @@ import com.lck07.lumen.data.db.ProgressEntity
 import com.lck07.lumen.data.db.WatchlistEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 enum class FavouriteKind(val key: String) { Series("series"), Movie("movie"), Channel("channel") }
+
+/** A movie or series by id, for lists that mix both. */
+data class TitleRef(val kind: FavouriteKind, val id: Int)
+
+private fun titleRef(kind: String, itemId: String): TitleRef? {
+    val k = when (kind) { "series" -> FavouriteKind.Series; "movie" -> FavouriteKind.Movie; else -> return null }
+    return itemId.toIntOrNull()?.let { TitleRef(k, it) }
+}
 
 /** Something that mirrors progress elsewhere (the Google TV "Watch Next" row). */
 interface ProgressListener {
@@ -85,6 +94,26 @@ class LibraryRepository(private val db: LumenDatabase, private val catalog: Cata
         val now = dao.isInWatchlistNow(p, kind.key, id)
         if (now) dao.removeFromWatchlist(p, kind.key, id) else dao.addToWatchlist(WatchlistEntity(p, kind.key, id, System.currentTimeMillis()))
         return !now
+    }
+
+    /** Favourite series and movies mixed, newest first. */
+    fun favouriteTitles(): Flow<List<TitleRef>> =
+        forProfile { id -> dao.allFavourites(id).map { l -> l.mapNotNull { titleRef(it.kind, it.itemId) } } }
+
+    /** Watchlist series and movies mixed, newest first. */
+    fun watchlistTitles(): Flow<List<TitleRef>> = forProfile { id ->
+        combine(dao.watchlist(id, FavouriteKind.Series.key), dao.watchlist(id, FavouriteKind.Movie.key)) { s, m ->
+            (s + m).sortedByDescending { it.addedAt }.mapNotNull { titleRef(it.kind, it.itemId) }
+        }
+    }
+
+    /** Series being followed and movies in progress, mixed, last watched first. */
+    fun continueTitles(): Flow<List<TitleRef>> = progress.map { all ->
+        val following = upNext(all).map { it.detail.series.id }.toSet()
+        val series = all.filter { it.seriesId in following }.groupBy { it.seriesId!! }
+            .map { (id, l) -> TitleRef(FavouriteKind.Series, id) to l.maxOf { it.updatedAt } }
+        val movies = Library.moviesInProgress(all).mapNotNull { p -> p.movieId?.let { TitleRef(FavouriteKind.Movie, it) to p.updatedAt } }
+        (series + movies).sortedByDescending { it.second }.map { it.first }
     }
 }
 

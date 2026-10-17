@@ -60,6 +60,9 @@ fun edgeBump(state: TvState, slot: RowSlot?): ((Key) -> Boolean)? = slot?.let {
     }
 }
 
+/** What a long-press on a poster does when the tile has no handler of its own (the favourites/watchlist menu). */
+val LocalPosterLongClick = androidx.compose.runtime.staticCompositionLocalOf<((PosterItem) -> Unit)?> { null }
+
 /**
  * A 2:3 poster. The title under it appears only while it has focus (tvOS posters); when the
  * artwork is missing the title is drawn on the generated art instead.
@@ -74,9 +77,13 @@ fun PosterTile(
     width: Dp = LumenSizes.PosterW,
     height: Dp = LumenSizes.PosterH,
     focusRequester: FocusRequester? = null,
+    /** A small label in the corner ("Movie" / "Series"). */
+    badge: String? = null,
     state: TvState = rememberTvState(),
 ) {
     val captionAlpha by animateFloatAsState(if (state.focused) 1f else 0f, tween(250), label = "caption")
+    val menu = LocalPosterLongClick.current
+    val longClick = onLongClick ?: menu?.let { m -> { m(item) } }
     Box(modifier.zIndex(if (state.focused) 1f else 0f)) {
         Box(
             Modifier
@@ -84,7 +91,7 @@ fun PosterTile(
                 .size(width, height)
                 .tileFocusEffect(state)
                 .background(LumenColors.TileBackground)
-                .tvClickable(state, label = item.title, onLongClick = onLongClick, onKey = edgeBump(state, slot), onClick = onClick)
+                .tvClickable(state, label = item.title, onLongClick = longClick, onKey = edgeBump(state, slot), onClick = onClick)
                 .testTag("poster:${item.key}"),
         ) {
             Artwork(item.image, item.title, Modifier.fillMaxSize(), variant = item.key.length) { loaded ->
@@ -94,6 +101,10 @@ fun PosterTile(
                 )
             }
             if (item.isNew) NewBadge(stringResource(R.string.badge_new), Modifier.align(Alignment.TopEnd).padding(7.dp))
+            if (badge != null) Txt(
+                badge, LumenType.Caption2Strong,
+                Modifier.align(Alignment.TopStart).padding(7.dp).clip(LumenRadii.Badge).background(Color.Black.copy(alpha = 0.6f)).padding(horizontal = 5.dp, vertical = 2.dp),
+            )
         }
         Caption(item.caption, captionAlpha, height, width)
     }

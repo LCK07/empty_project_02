@@ -8,6 +8,7 @@ import com.lck07.lumen.core.library.UpNext
 import com.lck07.lumen.core.library.WatchProgress
 import com.lck07.lumen.data.FavouriteKind
 import com.lck07.lumen.data.Show
+import com.lck07.lumen.data.TitleRef
 import com.lck07.lumen.data.db.ChannelEntity
 import com.lck07.lumen.data.db.MovieEntity
 import com.lck07.lumen.data.db.SeriesEntity
@@ -51,6 +52,24 @@ fun MovieEntity.poster(res: Resources, isNew: Boolean = false) = PosterItem(
     image = poster, target = Target.MovieDetail(id), isNew = isNew, favouriteKey = id.toString(),
 )
 
+/** Posters for a list of movies and series, in the list's order (rows update when the catalogue or the list changes). */
+@OptIn(ExperimentalCoroutinesApi::class)
+fun titlePosters(c: AppContainer, res: Resources, refs: Flow<List<TitleRef>>): Flow<List<PosterItem>> {
+    val dao = c.db.catalog()
+    return refs.flatMapLatest { list ->
+        val seriesIds = list.filter { it.kind == FavouriteKind.Series }.map { it.id }
+        val movieIds = list.filter { it.kind == FavouriteKind.Movie }.map { it.id }
+        combine(
+            if (seriesIds.isEmpty()) flowOf(emptyList()) else dao.seriesById(seriesIds),
+            if (movieIds.isEmpty()) flowOf(emptyList()) else dao.moviesById(movieIds),
+        ) { series, movies ->
+            val s = series.associateBy { it.id }
+            val m = movies.associateBy { it.id }
+            list.mapNotNull { r -> if (r.kind == FavouriteKind.Series) s[r.id]?.poster(res) else m[r.id]?.poster(res) }
+        }
+    }
+}
+
 /** Builds Home from the cache: the hero and rows update as progress, favourites and the guide change. */
 class HomeModel(private val c: AppContainer, private val res: Resources) {
 
@@ -79,9 +98,11 @@ class HomeModel(private val c: AppContainer, private val res: Resources) {
             val ids = movies.mapNotNull { it.movieId }
             if (ids.isEmpty()) flowOf(emptyList()) else dao.moviesById(ids)
         }
-        combine(continueFlow, moviesInProgress, favChannels, recentSeries, recentMovies) { (upNext, movieProgress), movies, channels, newSeries, newMovies ->
+        val rows = combine(continueFlow, moviesInProgress, favChannels, recentSeries, recentMovies) { (upNext, movieProgress), movies, channels, newSeries, newMovies ->
             build(upNext, movieProgress, movies, channels, newSeries, newMovies)
         }
+        val mine = combine(titlePosters(c, res, c.library.favouriteTitles()), titlePosters(c, res, c.library.watchlistTitles())) { f, w -> f to w }
+        combine(rows, mine) { state, (favourites, watchlist) -> state.copy(favourites = favourites, watchlist = watchlist) }
     }
 
     private suspend fun build(

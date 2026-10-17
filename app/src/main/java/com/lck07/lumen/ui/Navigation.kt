@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 
 enum class TopTab(val key: String) {
-    Home("home"), Series("series"), Movies("movies"), Live("live"), Guide("guide"), Search("search"), Settings("settings");
+    Home("home"), Series("series"), Movies("movies"), Live("live"), MyList("mylist"), Search("search"), Settings("settings");
 
     companion object { fun of(key: String?) = entries.firstOrNull { it.key == key } }
 }
@@ -23,6 +23,8 @@ sealed interface Screen {
     data class Vod(val request: VodRequest) : Screen { override val key = "vod:${request.key}" }
     /** Full-screen live TV. */
     data class Live(val channelId: Int) : Screen { override val key = "live" }
+    /** The programme guide, full screen over Live TV (or the live player). */
+    data object Guide : Screen { override val key = "guide" }
 
     companion object {
         /** Detail screens restore on relaunch; players never do (the owner may be elsewhere). */
@@ -79,6 +81,9 @@ class Navigator(initialTab: TopTab = TopTab.Home) {
 
     /** Focus target for content under the tab bar (moving down from the tab bar lands here). */
     val contentRequester = FocusRequester()
+
+    /** Settings should open on its Profiles page (from the profile switcher). */
+    var openProfiles by mutableStateOf(false)
 
     fun selectTab(t: TopTab) {
         stack.clear()
