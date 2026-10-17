@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -100,7 +101,8 @@ fun MovieDetailScreen(movieId: Int, onOpen: (Target) -> Unit) {
                 ProgressBar(progress.fraction, Modifier.width(110.dp))
                 Txt(stringResource(R.string.minutes_left, minutesLeft(progress)), LumenType.Caption1.tabular(), color = LumenColors.Label2)
             }
-            ButtonRow(Modifier.padding(top = 7.dp)) {
+            // The buttons may run wider than the text column, so labels are never cut off.
+            ButtonRow(Modifier.padding(top = 7.dp).wrapContentWidth(Alignment.Start, unbounded = true)) {
                 LumenButton(
                     stringResource(if (resumes) R.string.action_resume else R.string.action_play),
                     { onOpen(Target.PlayMovie(movieId)) }, icon = LumenIcons.Play, focusRequester = primary,

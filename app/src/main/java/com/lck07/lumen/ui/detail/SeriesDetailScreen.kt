@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -166,7 +167,8 @@ fun SeriesDetailScreen(seriesId: Int, onOpen: (Target) -> Unit) {
                 ),
             )
             series.plot?.let { Txt(it, LumenType.BodyLong, color = LumenColors.Label2, maxLines = if (long) 2 else 3, modifier = Modifier.width(450.dp)) }
-            ButtonRow(Modifier.padding(top = 7.dp)) {
+            // The buttons may run wider than the text column, so labels are never cut off.
+            ButtonRow(Modifier.padding(top = 7.dp).wrapContentWidth(Alignment.Start, unbounded = true)) {
                 val p = s.primary
                 val label = when {
                     p == null -> stringResource(R.string.action_play)
